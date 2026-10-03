@@ -7,7 +7,7 @@ Only explicit answers approve; anything else, including EOF / no TTY, is a rejec
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from autogen_agentchat.agents import UserProxyAgent
@@ -45,23 +45,35 @@ def parse_selection(answer: str, devices: list[str]) -> set[str]:
     return chosen
 
 
+def eligible_devices(results: list[DeviceResult]) -> list[str]:
+    """Devices whose remediation may be exported: approved audits with recorded fixes for FAILs."""
+    return [r.device for r in results if r.approved and r.counts["FAIL"] and r.ctx.remediations]
+
+
 class HumanApprover:
-    def __init__(self, input_func: Callable[[str], str] = safe_input, output: Callable[[str], None] = print) -> None:
+    def __init__(
+        self,
+        input_func: Callable[[str], str] | Callable[[str, CancellationToken | None], Awaitable[str]] = safe_input,
+        output: Callable[[str], None] = print,
+    ) -> None:
         self.agent = UserProxyAgent(name="HumanApprover", description="Human reviewer", input_func=input_func)
         self.output = output
         self.transcript: list[tuple[str, str]] = []  # (question, answer) for the audit log
+        self.pending: tuple[str, str] | None = None  # (kind, question) while waiting; lets a UI render controls
 
-    async def ask(self, question: str) -> str:
+    async def ask(self, question: str, kind: str = "text") -> str:
+        self.pending = (kind, question)
         self.output(question)
         response = await self.agent.on_messages(
             [TextMessage(content=question, source="ConfigGuard")], CancellationToken()
         )
         answer = str(response.chat_message.content).strip()
+        self.pending = None
         self.transcript.append((question, answer))
         return answer
 
     async def review(self, results: list[DeviceResult], existing_reports: list[str], *, export_allowed: bool) -> Decision:
-        eligible = [r.device for r in results if r.approved and r.counts["FAIL"] and r.ctx.remediations]
+        eligible = eligible_devices(results)
         lines = ["", "=" * 72, "HUMAN REVIEW", "=" * 72]
         for i, r in enumerate(results, start=1):
             c = r.counts
@@ -76,7 +88,8 @@ class HumanApprover:
         if existing_reports:
             answer = await self.ask(
                 f"\nReports already exist for: {', '.join(existing_reports)}.\n"
-                "Overwrite them? Type 'overwrite' to confirm, anything else keeps the old files: "
+                "Overwrite them? Type 'overwrite' to confirm, anything else keeps the old files: ",
+                kind="overwrite",
             )
             overwrite = answer.lower() == "overwrite"
 
@@ -86,7 +99,8 @@ class HumanApprover:
             answer = await self.ask(
                 f"\nExport remediation scripts (marked {chr(34)}REVIEW BEFORE APPLYING{chr(34)})?\n"
                 f"Eligible: {numbered}\n"
-                "Type 'all', 'none', or numbers/names separated by commas: "
+                "Type 'all', 'none', or numbers/names separated by commas: ",
+                kind="export",
             )
             by_index = [r.device for r in results]
             export = parse_selection(answer, by_index) & set(eligible)

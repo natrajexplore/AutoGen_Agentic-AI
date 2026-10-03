@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from autogen_core.models import ChatCompletionClient
 
@@ -43,6 +45,7 @@ async def audit_config(
     config_path: Path | None = None,
     resume_id: str | None = None,
     console: bool = True,
+    on_item: Callable[[Any], None] | None = None,
 ) -> DeviceResult:
     team_state = None
     if resume_id:
@@ -54,11 +57,17 @@ async def audit_config(
     log = AuditLog(settings.logs_dir / f"{ctx.audit_id}.jsonl")
     log.event("audit_start", audit_id=ctx.audit_id, config=ctx.config_path.name,
               provider=settings.model_provider, model=settings.model, resume=bool(resume_id))
+
+    def observe(item: Any) -> None:
+        log.item(item)
+        if on_item:
+            on_item(item)
+
     team = build_team(ctx, client, settings.max_messages)
     if team_state is not None:
         await team.load_state(team_state)
     try:
-        outcome = await run_audit(ctx, team, resume=team_state is not None, console=console, on_item=log.item)
+        outcome = await run_audit(ctx, team, resume=team_state is not None, console=console, on_item=observe)
     except (KeyboardInterrupt, asyncio.CancelledError):
         path = save_checkpoint(settings.state_dir, ctx, await team.save_state(), "paused")
         log.event("audit_paused", checkpoint=path.name)
@@ -68,7 +77,7 @@ async def audit_config(
     status = "approved" if outcome.approved else "not_approved"
     save_checkpoint(settings.state_dir, ctx, await team.save_state(), status)
     cost = outcome.usage.cost_usd(settings.price_input_per_mtok, settings.price_output_per_mtok)
-    log.event("audit_end", status=status, stop_reason=outcome.stop_reason, gaps=outcome.gaps,
+    log.event("audit_end", status=status, device=device_name(ctx), stop_reason=outcome.stop_reason, gaps=outcome.gaps,
               duration_s=round(outcome.duration_s, 2), prompt_tokens=outcome.usage.prompt_tokens,
               completion_tokens=outcome.usage.completion_tokens, cost_usd=round(cost, 6))
     if not outcome.approved:
@@ -118,16 +127,20 @@ async def finalize(
         )
 
     for r in results:
+        outputs: dict[str, str] = {}
         md = reports / f"{r.device}.md"
         if md.exists() and not decision.overwrite:
             md = reports / f"{r.device}-{r.ctx.audit_id}.md"  # keep the old report, write alongside
         md.write_text(render_markdown(r, generated), encoding="utf-8")
         summary.written.append(md)
+        outputs["report"] = str(md)
         if r.device in decision.export:
             scripts.mkdir(parents=True, exist_ok=True)
             txt = scripts / f"{r.device}_{r.ctx.audit_id}_remediation.txt"  # unique: never overwrites
             txt.write_text(render_remediation_script(r, generated), encoding="utf-8")
             summary.written.append(txt)
+            outputs["remediation"] = str(txt)
+        AuditLog(settings.logs_dir / f"{r.ctx.audit_id}.jsonl").event("outputs", **outputs)
 
     summary.written.append(write_csv_summary(results, reports / f"summary-{stamp}.csv"))
     if len(results) > 1 or summary.errors:

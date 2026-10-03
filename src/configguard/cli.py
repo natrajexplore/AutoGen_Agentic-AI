@@ -3,6 +3,7 @@
   configguard audit  CONFIG        audit one config (streams the agent conversation)
   configguard batch  FOLDER        audit every matching config in a folder, then one review step
   configguard resume AUDIT_ID      continue a paused or unapproved audit
+  configguard ui [--port 8000]     local web UI (http://127.0.0.1:8000)
 
 Exit codes: 0 all audits approved, 2 any audit not approved or failed, 130 interrupted (state saved).
 """
@@ -39,7 +40,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     resume = sub.add_parser("resume", help="continue a paused or unapproved audit")
     resume.add_argument("audit_id")
     resume.add_argument("--quiet", action="store_true", help="do not stream the agent conversation")
+
+    ui = sub.add_parser("ui", help="start the local web UI")
+    ui.add_argument("--port", type=int, default=8000)
     return parser.parse_args(argv)
+
+
+def serve_ui(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    from configguard.web.app import create_app
+
+    settings = Settings.from_env()
+    if args.baseline:
+        settings = dataclasses.replace(settings, baseline_path=args.baseline.resolve())
+    print(f"ConfigGuard UI: http://127.0.0.1:{args.port}  (local only, Ctrl+C to stop)")
+    # 127.0.0.1 only: the UI shows masked config data and spends API credits.
+    uvicorn.run(create_app(settings), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 async def run(args: argparse.Namespace) -> int:
@@ -66,6 +83,9 @@ async def run(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    if args.command == "ui":
+        serve_ui(args)
+        return
     try:
         sys.exit(asyncio.run(run(args)))
     except KeyboardInterrupt:

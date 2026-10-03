@@ -11,9 +11,13 @@ dependencies = [
     "autogen-agentchat==0.7.5",
     "autogen-ext[openai]==0.7.5",
     "ciscoconfparse2==0.9.18",
+    "fastapi==0.142.2",
     "pydantic==2.12.5",
     "python-dotenv==1.1.1",
+    "python-multipart==0.0.32",
     "pyyaml==6.0.3",
+    "uvicorn==0.54.0",
+    "websockets==17.1",
 ]
 
 [project.scripts]
@@ -21,6 +25,7 @@ configguard = "configguard.cli:main"
 
 [dependency-groups]
 dev = [
+    "httpx==0.28.1",
     "pytest==8.4.2",
 ]
 

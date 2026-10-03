@@ -29,6 +29,8 @@ class Settings:
     remediation_dir: Path
     logs_dir: Path
     state_dir: Path
+    configs_dir: Path  # configs offered in the web UI (default: the test fixtures)
+    uploads_dir: Path  # configs uploaded through the web UI
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -45,4 +47,6 @@ class Settings:
             remediation_dir=_path("REMEDIATION_DIR", PROJECT_ROOT / "remediation"),
             logs_dir=_path("LOGS_DIR", PROJECT_ROOT / "logs"),
             state_dir=_path("STATE_DIR", PROJECT_ROOT / "state"),
+            configs_dir=_path("CONFIGS_DIR", PROJECT_ROOT / "tests" / "fixtures"),
+            uploads_dir=_path("UPLOADS_DIR", PROJECT_ROOT / "uploads"),
         )

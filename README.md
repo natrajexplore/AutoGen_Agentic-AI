@@ -70,6 +70,25 @@ python main.py audit tests/fixtures/r10-mixed.cfg          # same as `configguar
 Global options go **before** the subcommand: `--baseline PATH`, `--no-remediation-export`.
 `audit` and `resume` accept `--quiet` (no streaming); `batch` accepts `--stream`.
 
+### Web UI
+
+```bash
+uv run configguard ui            # then open http://127.0.0.1:8000  (use --port to change)
+```
+
+- **Run.** Pick one config (or upload your own) for a live audit, or several for a batch. Each
+  agent's messages and tool calls stream in as they happen; the pipeline strip shows which agent is
+  working. When the audit finishes you see the findings table, the draft remediation, and the
+  **HumanApprover** step as buttons (export scripts, overwrite reports).
+- **History.** Every past audit, with findings, remediation, a replay of the agent conversation,
+  links to the report and script, and **Resume** for paused or unapproved audits.
+- **Baseline.** The 14 rules, with severity, check definition and remediation hint.
+
+The UI listens on `127.0.0.1` only and rejects other Host headers and cross-origin requests, so
+other web pages can't drive it (for example, to spend your API credits). Configs offered in the UI
+come from `CONFIGS_DIR` (default `tests/fixtures`) and `uploads/`; set `CONFIGS_DIR` in `.env` to
+point at your own config folder. Closing the browser tab mid-audit saves the audit as paused.
+
 **Pause and resume.** Press Ctrl+C during an audit to save it to `state/<audit_id>.json`. An audit
 that ends without approval (for example, hitting the 25-message limit) is saved the same way. Use
 `configguard resume <audit_id>` to continue. Resume refuses to continue if the config file has
@@ -166,7 +185,7 @@ Conventions you may need to adapt:
 ## Tests
 
 ```bash
-uv run pytest                    # 205 offline tests, no API calls (about 4 s)
+uv run pytest                    # 216 offline tests, no API calls (about 6 s)
 uv run pytest -m llm -s          # live multi-agent accuracy run on all 10 fixtures (about 5 min, about $0.60 with gpt-4o)
 uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures + expected_results.json
 ```
@@ -184,6 +203,7 @@ baselines/cisco_ios_v1.yaml  baseline rules
 docs/                        ARCHITECTURE.md, SPEC.md
 src/configguard/
   cli.py · runner.py         CLI, single / batch / resume orchestration
+  web/                       FastAPI backend (app.py, history.py) + static UI (index.html, app.js, styles.css)
   team.py                    RoundRobinGroupChat, termination, approval logic
   agents/factory.py          the four AssistantAgents and their tool bindings
   approval.py                HumanApprover (UserProxyAgent) gate

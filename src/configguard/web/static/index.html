@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConfigGuard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232f6fed' d='M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z"/></svg>
+      <span>ConfigGuard</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="run" role="tab">Run</button>
+      <button class="tab" data-view="history" role="tab">History</button>
+      <button class="tab" data-view="baseline" role="tab">Baseline</button>
+    </nav>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="banner warn hidden" id="key-warning">
+    No API key configured for the selected model provider. Add it to <code>.env</code> and restart <code>configguard ui</code>.
+  </div>
+
+  <!-- RUN -->
+  <main class="view" id="view-run">
+    <aside class="panel side">
+      <div class="panel-head">
+        <h2>Configs</h2>
+        <label class="btn small ghost" title="Upload a config file">
+          Upload<input type="file" id="upload" accept=".cfg,.txt,.conf,.ios" hidden>
+        </label>
+      </div>
+      <input type="search" id="config-filter" placeholder="Filter configs" aria-label="Filter configs">
+      <div class="select-row">
+        <button class="link" id="select-all">Select all</button>
+        <button class="link" id="select-none">Clear</button>
+      </div>
+      <ul class="config-list" id="config-list"></ul>
+      <label class="check"><input type="checkbox" id="export-allowed" checked> Offer remediation export</label>
+      <button class="btn primary block" id="run-btn" disabled>Run audit</button>
+      <p class="hint" id="run-hint">Select one config for a live audit, or several for a batch.</p>
+    </aside>
+
+    <section class="main-col">
+      <div class="panel pipeline" id="pipeline">
+        <div class="agent-node" data-agent="ConfigParser"><span class="dot"></span><div><b>ConfigParser</b><small>parse &amp; mask</small></div><em class="count"></em></div>
+        <div class="arrow">&rarr;</div>
+        <div class="agent-node" data-agent="ComplianceChecker"><span class="dot"></span><div><b>ComplianceChecker</b><small>rule engine</small></div><em class="count"></em></div>
+        <div class="arrow">&rarr;</div>
+        <div class="agent-node" data-agent="RemediationEngineer"><span class="dot"></span><div><b>RemediationEngineer</b><small>risk &amp; fixes</small></div><em class="count"></em></div>
+        <div class="arrow">&rarr;</div>
+        <div class="agent-node" data-agent="Critic"><span class="dot"></span><div><b>Critic</b><small>quality gate</small></div><em class="count"></em></div>
+        <div class="arrow">&rarr;</div>
+        <div class="agent-node" data-agent="HumanApprover"><span class="dot"></span><div><b>HumanApprover</b><small>you</small></div><em class="count"></em></div>
+      </div>
+
+      <div id="run-area">
+        <div class="empty" id="run-empty">
+          <h3>Watch the agents work</h3>
+          <p>Pick a config and press <b>Run audit</b>. Each agent's messages and tool calls stream here live, followed by the findings, remediation, and your approval.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- HISTORY -->
+  <main class="view hidden" id="view-history">
+    <section class="panel wide">
+      <div class="panel-head">
+        <h2>Audit history</h2>
+        <button class="btn small ghost" id="history-refresh">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table class="grid" id="history-table">
+          <thead><tr><th>Started</th><th>Device</th><th>Config</th><th>Status</th><th>FAIL</th><th>PASS</th><th>N/A</th><th>Time</th><th>Cost</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint hidden" id="history-empty">No audits yet. Run one from the Run tab.</p>
+    </section>
+    <section class="panel wide hidden" id="history-detail"></section>
+  </main>
+
+  <!-- BASELINE -->
+  <main class="view hidden" id="view-baseline">
+    <section class="panel wide">
+      <div class="panel-head"><h2 id="baseline-title">Baseline</h2></div>
+      <p class="hint" id="baseline-settings"></p>
+      <div class="table-wrap">
+        <table class="grid" id="baseline-table">
+          <thead><tr><th>Rule</th><th>Title</th><th>Severity</th><th>Category</th><th>Check</th><th>Lockout risk</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
