@@ -22,6 +22,11 @@ class Settings:
     ollama_host: str
     baseline_path: Path
     max_messages: int
+    # Spend safeguards: a runaway audit stops at whichever limit is hit first.
+    max_tokens_per_audit: int
+    audit_timeout_s: float
+    max_reply_tokens: int  # cap on each model completion
+    request_timeout_s: float  # per API request
     # USD per 1M tokens, for cost tracking. Defaults are gpt-4o list prices; override in .env.
     price_input_per_mtok: float
     price_output_per_mtok: float
@@ -41,6 +46,10 @@ class Settings:
             ollama_host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
             baseline_path=_path("BASELINE_PATH", PROJECT_ROOT / "baselines" / "cisco_ios_v1.yaml"),
             max_messages=int(os.getenv("MAX_MESSAGES", "25")),
+            max_tokens_per_audit=int(os.getenv("MAX_TOKENS_PER_AUDIT", "150000")),
+            audit_timeout_s=float(os.getenv("AUDIT_TIMEOUT_S", "300")),
+            max_reply_tokens=int(os.getenv("MAX_REPLY_TOKENS", "2048")),
+            request_timeout_s=float(os.getenv("REQUEST_TIMEOUT_S", "60")),
             price_input_per_mtok=float(os.getenv("PRICE_INPUT_PER_MTOK", "2.50")),
             price_output_per_mtok=float(os.getenv("PRICE_OUTPUT_PER_MTOK", "10.00")),
             reports_dir=_path("REPORTS_DIR", PROJECT_ROOT / "reports"),

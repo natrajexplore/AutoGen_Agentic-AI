@@ -16,7 +16,7 @@ _T = r"(?:[0-9] )?"  # optional encryption-type digit before a value
 
 # (pattern, is_snmp_community). Group 1 = prefix kept verbatim, group 2 = secret value.
 _RULES: list[tuple[re.Pattern[str], bool]] = [
-    (re.compile(rf"^(\s*snmp-server community )(\S+)", re.I), True),
+    (re.compile(r"^(\s*snmp-server community )(\S+)", re.I), True),
     (
         re.compile(
             r"^(\s*snmp-server host \S+ (?:informs |traps )?"
@@ -25,7 +25,7 @@ _RULES: list[tuple[re.Pattern[str], bool]] = [
         ),
         True,
     ),
-    (re.compile(rf"^(\s*ntp authentication-key \d+ md5 )(\S+)", re.I), False),
+    (re.compile(r"^(\s*ntp authentication-key \d+ md5 )(\S+)", re.I), False),
     (re.compile(rf"^(\s*crypto isakmp key {_T})(\S+)", re.I), False),
     (re.compile(rf"^(\s*pre-shared-key (?:local |remote )?{_T})(\S+)", re.I), False),
     (re.compile(rf"^(\s*(?:tacacs-server|radius-server) (?:host \S+ )?.*?\bkey {_T})(\S+)", re.I), False),
@@ -34,7 +34,10 @@ _RULES: list[tuple[re.Pattern[str], bool]] = [
     (re.compile(rf"^(\s*key-string {_T})(\S+)", re.I), False),
     (re.compile(rf"^(\s*ip ospf authentication-key {_T})(\S+)", re.I), False),
     (re.compile(rf"^(\s*ip ospf message-digest-key \d+ md5 {_T})(\S+)", re.I), False),
-    (re.compile(rf"^(\s*standby (?:\d+ )?authentication (?:md5 key-string |text )?{_T})(\S+)", re.I), False),
+    (re.compile(rf"^(\s*(?:standby|vrrp|glbp) (?:\d+ )?authentication (?:md5 key-string |text )?{_T})(\S+)", re.I), False),
+    (re.compile(rf"^(\s*wpa-psk (?:ascii|hex) {_T})(\S+)", re.I), False),
+    (re.compile(r"^(\s*key config-key password-encrypt )(\S+)", re.I), False),
+    (re.compile(r"^(\s*ip nhrp authentication )(\S+)", re.I), False),
 ]
 
 # SNMPv3 users carry two secrets (auth and priv); handled separately.

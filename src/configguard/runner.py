@@ -63,7 +63,8 @@ async def audit_config(
         if on_item:
             on_item(item)
 
-    team = build_team(ctx, client, settings.max_messages)
+    team = build_team(ctx, client, settings.max_messages,
+                      max_total_tokens=settings.max_tokens_per_audit, timeout_s=settings.audit_timeout_s)
     if team_state is not None:
         await team.load_state(team_state)
     try:

@@ -8,7 +8,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from autogen_agentchat.base import TaskResult
-from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
+from autogen_agentchat.conditions import (
+    MaxMessageTermination,
+    TextMentionTermination,
+    TimeoutTermination,
+    TokenUsageTermination,
+)
 from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.ui import Console
@@ -33,9 +38,22 @@ class AuditOutcome:
     result: TaskResult | None = field(repr=False, default=None)
 
 
-def build_team(ctx: AuditContext, model_client: ChatCompletionClient, max_messages: int = 25) -> RoundRobinGroupChat:
+def build_team(
+    ctx: AuditContext,
+    model_client: ChatCompletionClient,
+    max_messages: int = 25,
+    *,
+    max_total_tokens: int = 150_000,
+    timeout_s: float = 300,
+) -> RoundRobinGroupChat:
     # sources=["Critic"]: approval text injected via config content or other agents cannot end the run.
-    termination = TextMentionTermination(APPROVAL, sources=["Critic"]) | MaxMessageTermination(max_messages)
+    # Token and time limits are spend safeguards, checked after every agent turn (tool steps included).
+    termination = (
+        TextMentionTermination(APPROVAL, sources=["Critic"])
+        | MaxMessageTermination(max_messages)
+        | TokenUsageTermination(max_total_token=max_total_tokens)
+        | TimeoutTermination(timeout_s)
+    )
     return RoundRobinGroupChat(build_agents(ctx, model_client), termination_condition=termination)
 
 

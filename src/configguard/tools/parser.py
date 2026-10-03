@@ -137,6 +137,21 @@ def build_inventory(ctx: AuditContext) -> dict[str, Any]:
     }
 
 
+def inventory_summary(inv: dict[str, Any]) -> dict[str, Any]:
+    """Compact view for the model: counts and warnings only.
+
+    No agent needs the full inventory text (verdicts come from the rule engine), so sending it
+    to the model only spends tokens and widens the prompt-injection surface.
+    """
+    sections = ("interfaces", "lines", "aaa", "users", "snmp", "ntp", "logging", "services", "banners", "acls")
+    return {
+        "hostname": inv["hostname"],
+        "counts": {s: len(inv[s]) for s in sections},
+        "line_sections": [entry["name"] for entry in inv["lines"]],
+        "warnings": inv["warnings"],
+    }
+
+
 def parse_ios_config(ctx: AuditContext) -> dict[str, Any]:
     """Parse the loaded config into a masked JSON inventory."""
     if not ctx.loaded:

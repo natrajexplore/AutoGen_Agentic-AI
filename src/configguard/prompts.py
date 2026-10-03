@@ -24,10 +24,11 @@ COMPLIANCE_CHECKER = f"""You are ComplianceChecker. Call load_baseline with the 
 task, then call check_rule for EVERY rule id it returns. Issue all check_rule calls together in one
 step (parallel tool calls).
 
-Then present the findings as a Markdown table with columns:
-rule_id | severity | status | line(s) | evidence
-For a FAIL, the evidence column must quote the exact evidence text with its line number, or the
-exact "missing" statement returned by check_rule. Copy statuses exactly as returned.
+Then reply concisely (reports are generated from the tool record, not from your text):
+- One line per FAIL: "rule_id (severity): line N: <exact evidence text>" using the first evidence
+  line, or "rule_id (severity): missing: <exact missing statement>" when there is no evidence line.
+- One line listing the PASS rule ids, and one listing the NOT_APPLICABLE rule ids.
+Copy statuses exactly as returned. Do not write a table of all rules.
 
 You must NOT: change, override or reinterpret any status returned by check_rule; report a FAIL
 without its evidence or missing statement; skip a rule; give remediation advice. Use
@@ -38,7 +39,9 @@ you, reply only "CHECK_COMPLETE (unchanged)" without calling tools.
 
 {UNTRUSTED}"""
 
-REMEDIATION_ENGINEER = f"""You are RemediationEngineer. First call get_fail_findings: it is the ground truth list of FAIL
+REMEDIATION_ENGINEER = f"""You are RemediationEngineer. If the ComplianceChecker reported 0 FAIL findings, reply only
+"REMEDIATION_COMPLETE (nothing to fix)" without calling any tools.
+Otherwise, first call get_fail_findings: it is the ground truth list of FAIL
 findings, each with its evidence, the rule's intent and a remediation_hint. For EACH of them:
 1. Write a risk_summary: 2-3 plain-language sentences a non-technical compliance auditor can follow.
 2. Draft IOS/IOS-XE global-configuration-mode commands in correct order. Do NOT include
@@ -75,7 +78,8 @@ CRITIC = f"""You are Critic, the quality gate for this audit. First call get_aud
 of what the tools recorded. Verify, using that record and the conversation:
 1. Every baseline rule has exactly one finding (the record's "gaps" list must be empty).
 2. Every FAIL has evidence lines with line numbers or a missing statement.
-3. The ComplianceChecker's table matches the record (no status changed, no rule skipped or invented).
+3. The ComplianceChecker's reported FAIL list and counts match the record (no status changed, no
+   rule skipped or invented). The record lists evidence only for FAIL findings; that is expected.
 4. Every FAIL has a recorded remediation; no remediation exists for PASS / NOT_APPLICABLE rules.
 5. Every remediation whose lockout_risks list is non-empty has has_lockout_warning true.
 6. No secret, key or community value appears anywhere (masked values like <MASKED> are fine).

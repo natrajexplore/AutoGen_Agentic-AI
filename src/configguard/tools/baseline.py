@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import Any
 
+import regex
 import yaml
 from pydantic import ValidationError
 
@@ -17,6 +19,8 @@ from configguard.tools.rule_checks import PYTHON_CHECKS, evaluate
 
 MAX_PATTERN_LEN = 200
 MAX_LINE_RESULTS = 50
+MAX_LINE_CHARS = 200  # long lines (e.g. untrusted descriptions) are truncated in search results
+SEARCH_BUDGET_S = 1.0
 
 
 def read_baseline(path: Path) -> Baseline:
@@ -76,20 +80,29 @@ def find_config_lines(ctx: AuditContext, pattern: str) -> dict[str, Any]:
     """Regex search over the MASKED config, returning matching lines with line numbers.
 
     Searching masked text (not raw) stops the model from probing secret values with patterns.
+    The `regex` engine's timeout bounds the whole search, so a pathological (ReDoS) pattern
+    from the model cannot stall the audit.
     """
     if not ctx.loaded:
         return error("no config loaded; call load_config first")
     if len(pattern) > MAX_PATTERN_LEN:
         return error(f"pattern longer than {MAX_PATTERN_LEN} characters")
     try:
-        rx = re.compile(pattern, re.I)
-    except re.error as exc:
+        rx = regex.compile(pattern, regex.I)
+    except regex.error as exc:
         return error(f"invalid regex: {exc}")
-    hits = [
-        {"line_number": i, "text": line.rstrip()}
-        for i, line in enumerate(ctx.masked_lines, start=1)
-        if rx.search(line)
-    ]
+    deadline = time.monotonic() + SEARCH_BUDGET_S
+    hits = []
+    try:
+        for i, line in enumerate(ctx.masked_lines, start=1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError
+            if rx.search(line, timeout=remaining):
+                text = line.rstrip()
+                hits.append({"line_number": i, "text": text[:MAX_LINE_CHARS] + ("..." if len(text) > MAX_LINE_CHARS else "")})
+    except TimeoutError:
+        return error(f"pattern too expensive (exceeded {SEARCH_BUDGET_S}s); use a simpler regex")
     return {
         "ok": True,
         "note": UNTRUSTED_NOTE,

@@ -17,6 +17,10 @@ from configguard.tools.masking import mask_line
 
 MAX_COMMANDS = 60
 MAX_COMMAND_LEN = 255
+MAX_RISK_SUMMARY = 800
+MAX_WARNINGS = 5
+MAX_WARNING_LEN = 300
+_CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 PLACEHOLDER = re.compile(r"<[A-Z0-9_]+>")
 LOCKOUT_MARKER = "LOCKOUT WARNING"
 
@@ -115,6 +119,9 @@ def validate_ios_syntax(commands: list[str]) -> dict[str, Any]:
             continue
         if len(cmd) > MAX_COMMAND_LEN or re.search(r"[\x00-\x1f\x7f]", cmd) or not cmd.isascii():
             errors.append(f"{where}: too long, or contains control/non-ASCII characters")
+            continue
+        if "`" in cmd:  # never valid in IOS; would also break Markdown code fences in reports
+            errors.append(f"{where}: backticks are not allowed")
             continue
         placeholders.update(PLACEHOLDER.findall(cmd))
         if "<MASKED" in cmd.upper():
@@ -228,17 +235,28 @@ def lockout_risks(ctx: AuditContext, commands: list[str]) -> list[str]:
     return risks
 
 
+def _clean_text(text: str) -> str:
+    """Collapse control characters (incl. newlines) so text can't break out of report/script lines."""
+    return _CONTROL.sub(" ", text).strip()
+
+
 def record_remediation(
     ctx: AuditContext, rule_id: str, risk_summary: str, commands: list[str], warnings: list[str]
 ) -> dict[str, Any]:
     """Validate and store a remediation for one FAIL finding."""
     rule_id = rule_id.strip().upper()
+    risk_summary = _clean_text(risk_summary)
+    warnings = [w for w in (_clean_text(w) for w in warnings) if w]
+    if len(risk_summary) > MAX_RISK_SUMMARY:
+        return error(f"risk_summary is {len(risk_summary)} characters; keep it under {MAX_RISK_SUMMARY}")
+    if len(warnings) > MAX_WARNINGS or any(len(w) > MAX_WARNING_LEN for w in warnings):
+        return error(f"use at most {MAX_WARNINGS} warnings of up to {MAX_WARNING_LEN} characters each")
     finding = ctx.findings.get(rule_id)
     if finding is None:
         return error(f"no finding for {rule_id}; run check_rule first")
     if finding.status != "FAIL":
         return error(f"{rule_id} is {finding.status}; remediation is only for FAIL findings")
-    if not risk_summary.strip():
+    if not risk_summary:
         return error("risk_summary is required")
 
     result = validate_ios_syntax(commands)
@@ -268,6 +286,6 @@ def record_remediation(
         return {"ok": False, "recorded": False, "errors": problems}
 
     ctx.remediations[rule_id] = Remediation(
-        rule_id=rule_id, risk_summary=risk_summary.strip(), commands=[c.rstrip() for c in commands], warnings=warnings
+        rule_id=rule_id, risk_summary=risk_summary, commands=[c.rstrip() for c in commands], warnings=warnings
     )
     return {"ok": True, "recorded": True, "lockout_risks": risks, "placeholders": result["placeholders"]}

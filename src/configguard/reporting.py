@@ -57,6 +57,11 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|")
 
 
+def prose(text: str) -> str:
+    """Agent-written text in Markdown: escape HTML so it renders as text, never as markup."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 def _sorted_findings(ctx: AuditContext) -> list[Finding]:
     order = [r.id for r in ctx.baseline.rules] if ctx.baseline else sorted(ctx.findings)
     return [ctx.findings[r] for r in order if r in ctx.findings]
@@ -94,7 +99,7 @@ def render_markdown(result: DeviceResult, generated: datetime) -> str:
         lines += ["| Severity | Control | What this means |", "|---|---|---|"]
         for f in fails:
             rem = ctx.remediations.get(f.rule_id)
-            meaning = rem.risk_summary if rem else "(no risk summary recorded)"
+            meaning = prose(rem.risk_summary) if rem else "(no risk summary recorded)"
             lines.append(f"| {f.severity.upper()} | {f.rule_id} {_cell(f.title)} | {_cell(meaning)} |")
         lines.append("")
     else:
@@ -119,9 +124,9 @@ def render_markdown(result: DeviceResult, generated: datetime) -> str:
             lines += ["**Missing**", ""] + [f"- {m}" for m in f.missing] + [""]
         rem = ctx.remediations.get(f.rule_id)
         if rem:
-            lines += ["**Risk**", "", rem.risk_summary, ""]
+            lines += ["**Risk**", "", prose(rem.risk_summary), ""]
             if rem.warnings:
-                lines += [f"> **{w}**" if "LOCKOUT" in w.upper() else f"> {w}" for w in rem.warnings] + [""]
+                lines += [f"> **{prose(w)}**" if "LOCKOUT" in w.upper() else f"> {prose(w)}" for w in rem.warnings] + [""]
             lines += [f"**Proposed remediation ({REVIEW_BANNER})**", "", "```", *rem.commands, "```", ""]
         if f.advisory:
             lines += [f"_Advisory: {f.advisory}_", ""]

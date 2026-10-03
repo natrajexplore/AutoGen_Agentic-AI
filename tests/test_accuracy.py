@@ -85,7 +85,8 @@ def test_full_agent_audit(name: str) -> None:
         client = build_model_client(settings)
         try:
             ctx = AuditContext(FIXTURES / name, BASELINE)
-            team = build_team(ctx, client, settings.max_messages)
+            team = build_team(ctx, client, settings.max_messages,
+                              max_total_tokens=settings.max_tokens_per_audit, timeout_s=settings.audit_timeout_s)
             outcome = await run_audit(ctx, team, console=False)
             return ctx, outcome, outcome.usage
         finally:

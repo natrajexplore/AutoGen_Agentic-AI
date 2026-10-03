@@ -57,12 +57,16 @@ def get_audit_record(ctx: AuditContext) -> dict[str, Any]:
     for rule in ctx.baseline.rules:
         f = ctx.findings.get(rule.id)
         rem = ctx.remediations.get(rule.id)
+        if f is None or (f.status != "FAIL" and rem is None):
+            # Non-FAIL findings need only their status for review; omitting evidence saves tokens.
+            findings.append({"rule_id": rule.id, "status": f.status if f else None})
+            continue
         findings.append(
             {
                 "rule_id": rule.id,
-                "status": f.status if f else None,
-                "evidence": [e.model_dump() for e in f.evidence] if f else [],
-                "missing": f.missing if f else [],
+                "status": f.status,
+                "evidence": [e.model_dump() for e in f.evidence],
+                "missing": f.missing,
                 "remediation": None
                 if rem is None
                 else {

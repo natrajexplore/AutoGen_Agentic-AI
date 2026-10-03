@@ -58,6 +58,35 @@ def item_record(item: Any) -> dict[str, Any]:
     return json.loads(json.dumps({"type": type(item).__name__, "data": data}, default=str))
 
 
+class AnswerChannel:
+    """Delivers approval answers only while a question is open.
+
+    Without this gate, a stray or duplicated answer (e.g. a double-click) would be queued and
+    silently consumed by the NEXT approval question, approving something the user never saw.
+    """
+
+    def __init__(self) -> None:
+        self._queue: asyncio.Queue[str] = asyncio.Queue(maxsize=1)
+        self.open = False
+
+    def offer(self, text: str) -> bool:
+        if not self.open:
+            return False
+        self.open = False
+        self._queue.put_nowait(text)
+        return True
+
+    def expect(self) -> None:
+        """Open the gate. Call before the question is sent, so a fast reply is never dropped."""
+        self.open = True
+
+    async def wait(self) -> str:
+        try:
+            return await self._queue.get()
+        finally:
+            self.open = False
+
+
 def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     hosts = allowed_hosts or LOCAL_HOSTS
@@ -178,7 +207,7 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
             return
         await ws.accept()
         outbox: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-        answers: asyncio.Queue[str] = asyncio.Queue()
+        answers = AnswerChannel()
 
         async def sender() -> None:
             while (msg := await outbox.get()) is not None:
@@ -191,7 +220,8 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
                 msg = await ws.receive_json()
                 action = msg.get("action")
                 if action == "answer":
-                    await answers.put(str(msg.get("text", "")))
+                    if not answers.offer(str(msg.get("text", ""))[:500]):
+                        outbox.put_nowait({"type": "error", "message": "no approval question is waiting; answer ignored"})
                 elif action == "start":
                     if run_lock.locked() or (run_task and not run_task.done()):
                         outbox.put_nowait({"type": "error", "message": "an audit is already running"})
@@ -208,7 +238,7 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
             outbox.put_nowait(None)
             send_task.cancel()
 
-    async def execute(msg: dict[str, Any], outbox: asyncio.Queue[Any], answers: asyncio.Queue[str]) -> None:
+    async def execute(msg: dict[str, Any], outbox: asyncio.Queue[Any], answers: AnswerChannel) -> None:
         async with run_lock:
             mode = msg.get("mode")
             export_allowed = bool(msg.get("export_allowed", True))
@@ -254,13 +284,14 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
 
                 async def web_input(_prompt: str, _token: Any = None) -> str:
                     kind, question = approver.pending or ("text", "")
+                    answers.expect()
                     outbox.put_nowait({
                         "type": "question", "kind": kind, "text": question,
                         "devices": [{"device": r.device, "audit_id": r.ctx.audit_id, "approved": r.approved,
                                      "counts": r.counts} for r in results],
                         "eligible": eligible_devices(results),
                     })
-                    return await answers.get()
+                    return await answers.wait()
 
                 approver = HumanApprover(input_func=web_input, output=lambda _text: None)
                 await runner.finalize(settings, summary, approver, export_allowed=export_allowed)

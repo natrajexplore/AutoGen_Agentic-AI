@@ -18,6 +18,9 @@ from configguard.context import AuditContext
 from configguard.tools import audit_record, baseline, ios_syntax, loader, masking, parser
 
 
+MAX_MASK_INPUT = 20_000
+
+
 def _json(result: dict[str, Any]) -> str:
     # AutoGen stringifies non-pydantic return values with str(); JSON is clearer for the model.
     return json.dumps(result, ensure_ascii=False)
@@ -28,10 +31,13 @@ def _tools(ctx: AuditContext) -> dict[str, FunctionTool]:
         return _json(loader.load_config(ctx, path))
 
     async def mask_secrets(text: str) -> str:
-        return masking.mask_secrets(text)
+        return masking.mask_secrets(text[:MAX_MASK_INPUT])
 
     async def parse_ios_config() -> str:
-        return _json(parser.parse_ios_config(ctx))
+        result = parser.parse_ios_config(ctx)  # full inventory is kept in ctx for reports and the UI
+        if result["ok"]:
+            result = {"ok": True, "summary": parser.inventory_summary(result["inventory"])}
+        return _json(result)
 
     async def load_baseline(path: str) -> str:
         return _json(baseline.load_baseline(ctx, path))
@@ -57,7 +63,7 @@ def _tools(ctx: AuditContext) -> dict[str, FunctionTool]:
     specs = {
         load_config: "Load the device config assigned to this audit. Returns metadata only (line count, hostname).",
         mask_secrets: "Mask passwords, keys and SNMP communities in a piece of config text.",
-        parse_ios_config: "Parse the loaded config into a structured, secret-masked JSON inventory.",
+        parse_ios_config: "Parse the loaded config into a structured, secret-masked inventory. Returns a summary.",
         load_baseline: "Load the compliance baseline assigned to this audit and list its rule ids.",
         check_rule: "Deterministically evaluate one baseline rule. Returns status, evidence lines and missing lines.",
         find_config_lines: "Regex search over the masked config. Returns matching lines with line numbers.",

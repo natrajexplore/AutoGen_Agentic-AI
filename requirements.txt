@@ -100,7 +100,9 @@ pyyaml==6.0.3
     #   configguard
     #   hier-config
 regex==2026.9.29
-    # via tiktoken
+    # via
+    #   configguard
+    #   tiktoken
 requests==2.34.2
     # via tiktoken
 rich==15.0.0

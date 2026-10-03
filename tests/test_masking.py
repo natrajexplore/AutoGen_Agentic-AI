@@ -39,6 +39,11 @@ from configguard.tools.parser import parse_ios_config
         (" ip ospf authentication-key 7 0822", f" ip ospf authentication-key 7 {MASK}"),
         (" neighbor 10.0.0.2 password 7 0822", f" neighbor 10.0.0.2 password 7 {MASK}"),
         (" standby 1 authentication md5 key-string S3c", f" standby 1 authentication md5 key-string {MASK}"),
+        (" vrrp 1 authentication text Vr3p", f" vrrp 1 authentication text {MASK}"),
+        (" glbp 10 authentication md5 key-string Gl8p", f" glbp 10 authentication md5 key-string {MASK}"),
+        (" wpa-psk ascii 0 WifiK3y!", f" wpa-psk ascii 0 {MASK}"),
+        ("key config-key password-encrypt M4sterK3y", f"key config-key password-encrypt {MASK}"),
+        (" ip nhrp authentication NhrpK3y", f" ip nhrp authentication {MASK}"),
     ],
 )
 def test_mask_line_masks_secret_values(line: str, expected: str) -> None:
