@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets
+.env
+
+# Read-only AutoGen reference clone
+reference/
+
+# ConfigGuard run outputs
+logs/
+state/
+reports/
+remediation/
+
+# Tooling
+.pytest_cache/

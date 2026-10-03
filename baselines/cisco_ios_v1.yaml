@@ -1,0 +1,220 @@
+# ConfigGuard baseline for Cisco IOS / IOS-XE.
+# Rule IDs and wording are ConfigGuard's own, informed by public Cisco hardening guidance.
+#
+# Check types (see src/configguard/models.py, RuleCheck):
+#   global_required    top-level lines matching every all_of pattern / at least one any_of
+#                      pattern must exist; optional forbid patterns must not exist
+#   global_forbidden   no top-level line may match `pattern`
+#   children_required  every section matching `parent` needs a child matching each
+#                      `require` pattern and none matching any `forbid` pattern
+#   python             named function in src/configguard/tools/rule_checks.py
+# Patterns are Python regexes, matched case-insensitively against whitespace-stripped lines.
+# applies_when.global_present: if no top-level line matches, the rule is NOT_APPLICABLE.
+
+schema_version: 1
+platform: cisco_ios
+
+settings:
+  external_interface_pattern: '(?i)\b(wan|internet|isp|external|uplink-ext)\b'
+  max_exec_timeout_minutes: 15
+  default_snmp_communities: [public, private]
+
+rules:
+  - id: CG-001
+    title: Remote terminal access limited to SSH
+    severity: critical
+    category: management-plane
+    description: >-
+      Every VTY line must explicitly accept SSH only. Telnet sends usernames, passwords and
+      session contents across the network in cleartext.
+    check:
+      type: children_required
+      parent: '^line vty\b'
+      require: '^transport input ssh$'
+      forbid: '^transport input .*\b(telnet|all)\b'
+    remediation_hint: [line vty 0 4, transport input ssh, exit]
+    lockout_risk: true
+
+  - id: CG-002
+    title: SSH protocol version 2 enforced
+    severity: high
+    category: management-plane
+    description: >-
+      The SSH server must be pinned to version 2. Version 1 has known cryptographic weaknesses
+      that allow session hijacking and credential recovery.
+    check:
+      type: global_required
+      all_of: ['^ip ssh version 2$']
+    remediation_hint: [ip ssh version 2]
+
+  - id: CG-003
+    title: Password encryption service enabled
+    severity: medium
+    category: credentials
+    description: >-
+      service password-encryption must be on so that passwords stored in the configuration are
+      not readable by anyone who sees a copy of it.
+    check:
+      type: global_required
+      all_of: ['^service password-encryption$']
+    remediation_hint: [service password-encryption]
+    advisory: >-
+      Type 7 obfuscation is reversible; prefer 'secret' (type 8/9) hashes for all credentials.
+
+  - id: CG-004
+    title: Privileged mode protected by enable secret
+    severity: high
+    category: credentials
+    description: >-
+      Privileged EXEC access must use 'enable secret' (a one-way hash) and the legacy
+      'enable password' (weak or no encryption) must not be present.
+    check:
+      type: global_required
+      all_of: ['^enable (algorithm-type \S+ )?secret\b']
+      forbid: ['^enable password\b']
+    remediation_hint: [no enable password, enable algorithm-type scrypt secret <STRONG_SECRET>]
+
+  - id: CG-005
+    title: AAA enabled with a login authentication method
+    severity: high
+    category: access-control
+    description: >-
+      'aaa new-model' must be enabled together with at least one 'aaa authentication login'
+      method list, so every login is authenticated through a defined, auditable method.
+    check:
+      type: global_required
+      all_of: ['^aaa new-model$', '^aaa authentication login \S+ \S+']
+    remediation_hint: [aaa new-model, aaa authentication login default local]
+    lockout_risk: true
+
+  - id: CG-006
+    title: No default SNMP community strings
+    severity: critical
+    category: management-plane
+    description: >-
+      SNMP must not use well-known community strings such as 'public' or 'private', which
+      attackers try first and which can expose (or, read-write, change) the configuration.
+    applies_when:
+      global_present: '^snmp-server\b'
+    check:
+      type: python
+      function: snmp_communities
+    remediation_hint:
+      - no snmp-server community public
+      - snmp-server group <SNMP_GROUP> v3 priv
+      - snmp-server user <SNMP_USER> <SNMP_GROUP> v3 auth sha <AUTH_SECRET> priv aes 128 <PRIV_SECRET>
+
+  - id: CG-007
+    title: Cleartext HTTP management disabled
+    severity: high
+    category: management-plane
+    description: >-
+      The HTTP server must be disabled. If web management is needed, only the HTTPS server
+      ('ip http secure-server') may be used.
+    check:
+      type: global_forbidden
+      pattern: '^ip http server$'
+    remediation_hint: [no ip http server]
+
+  - id: CG-008
+    title: Login banner configured
+    severity: low
+    category: legal
+    description: >-
+      A login or MOTD banner must warn that access is restricted and monitored. It supports
+      legal action against unauthorized users.
+    check:
+      type: global_required
+      any_of: ['^banner login\b', '^banner motd\b']
+    remediation_hint: ['banner login ^CAuthorized access only. Activity is monitored.^C']
+
+  - id: CG-009
+    title: Remote syslog with informational logging
+    severity: medium
+    category: monitoring
+    description: >-
+      Logs must be sent to at least one remote syslog host at 'informational' (level 6) or a
+      more verbose level, so security events survive a reboot or a compromise of the device.
+    check:
+      type: global_required
+      all_of:
+        - '^logging (host \S+|(\d{1,3}\.){3}\d{1,3}\b)'
+        - '^logging trap (informational|debugging|6|7)$'
+    remediation_hint: [logging host <SYSLOG_SERVER_IP>, logging trap informational]
+
+  - id: CG-010
+    title: Authenticated NTP
+    severity: medium
+    category: monitoring
+    description: >-
+      NTP must be configured with authentication: an authentication key, a trusted key,
+      'ntp authenticate', and at least one server that uses the key. Accurate, trusted time is
+      required for log correlation and certificate validation.
+    check:
+      type: global_required
+      all_of:
+        - '^ntp authenticate$'
+        - '^ntp authentication-key \d+ \S+ '
+        - '^ntp trusted-key \d+'
+        - '^ntp server .*\bkey \d+'
+    remediation_hint:
+      - ntp authentication-key 1 md5 <NTP_KEY>
+      - ntp trusted-key 1
+      - ntp authenticate
+      - ntp server <NTP_SERVER_IP> key 1
+
+  - id: CG-011
+    title: VTY access restricted by ACL
+    severity: high
+    category: access-control
+    description: >-
+      Every VTY line must apply an inbound access-class so only approved management hosts can
+      open remote sessions.
+    check:
+      type: children_required
+      parent: '^line vty\b'
+      require: '^access-class \S+ in\b'
+    remediation_hint:
+      - ip access-list standard <MGMT_ACL>
+      - permit <MGMT_SUBNET> <WILDCARD>
+      - exit
+      - line vty 0 4
+      - access-class <MGMT_ACL> in
+      - exit
+    lockout_risk: true
+
+  - id: CG-012
+    title: Idle session timeout on console and VTY
+    severity: medium
+    category: access-control
+    description: >-
+      Console and VTY lines must have an exec-timeout that is not disabled ('0 0') and not
+      longer than the baseline maximum, so unattended sessions are closed.
+    check:
+      type: python
+      function: exec_timeout
+    remediation_hint: [line con 0, exec-timeout 10 0, exit, line vty 0 4, exec-timeout 10 0, exit]
+
+  - id: CG-013
+    title: CDP disabled on external-facing interfaces
+    severity: medium
+    category: information-disclosure
+    description: >-
+      CDP must be off on interfaces facing untrusted networks (identified by their description).
+      CDP announces the platform, software version and addresses to anything connected.
+    check:
+      type: python
+      function: cdp_external
+    remediation_hint: [interface <EXTERNAL_INTERFACE>, no cdp enable, exit]
+
+  - id: CG-014
+    title: Unused interfaces shut down
+    severity: low
+    category: physical
+    description: >-
+      Interfaces with no IP address, no description and no switchport configuration are
+      considered unused and must be administratively shut down to block unauthorized access.
+    check:
+      type: python
+      function: unused_interfaces
+    remediation_hint: [interface <UNUSED_INTERFACE>, shutdown, exit]

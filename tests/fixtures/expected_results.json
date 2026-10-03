@@ -1,0 +1,208 @@
+{
+  "baseline": "baselines/cisco_ios_v1.yaml",
+  "secrets": [
+    "$9$aB3dE5fG7hJ9kL$Mn1Op2Qr3St4Uv5Wx6Yz7Ab8Cd9Ef0Gh1Ij2Kl3Mn4o",
+    "$9$kT7mXbqWJ1dZ0e$Qp8vC2rL5nYhG4sF6aU3wE9iO1tK7jM0bN2xV5zR8cD",
+    "045802150C2E1D1C5A",
+    "070C285F4D06485744",
+    "0822455D0A16",
+    "1514090A0F2B3E2F",
+    "AuthK3y#2024",
+    "Cisc0Enable!",
+    "N0c-R3ad-77",
+    "PrivK3y#2024",
+    "Str0ngRO-2024"
+  ],
+  "devices": {
+    "r01-compliant.cfg": {
+      "hostname": "EDGE-R01",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "PASS",
+        "CG-006": "PASS",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "PASS"
+      }
+    },
+    "r02-all-violations.cfg": {
+      "hostname": "EDGE-R02",
+      "expected": {
+        "CG-001": "FAIL",
+        "CG-002": "FAIL",
+        "CG-003": "FAIL",
+        "CG-004": "FAIL",
+        "CG-005": "FAIL",
+        "CG-006": "FAIL",
+        "CG-007": "FAIL",
+        "CG-008": "FAIL",
+        "CG-009": "FAIL",
+        "CG-010": "FAIL",
+        "CG-011": "FAIL",
+        "CG-012": "FAIL",
+        "CG-013": "FAIL",
+        "CG-014": "FAIL"
+      }
+    },
+    "r03-mgmt-plane.cfg": {
+      "hostname": "BR-R03",
+      "expected": {
+        "CG-001": "FAIL",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "PASS",
+        "CG-006": "PASS",
+        "CG-007": "FAIL",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "FAIL",
+        "CG-013": "PASS",
+        "CG-014": "PASS"
+      }
+    },
+    "r04-snmp-ssh-cdp.cfg": {
+      "hostname": "BR-R04",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "FAIL",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "PASS",
+        "CG-006": "FAIL",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "PASS",
+        "CG-013": "FAIL",
+        "CG-014": "PASS"
+      }
+    },
+    "r05-credentials.cfg": {
+      "hostname": "BR-R05",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "PASS",
+        "CG-003": "FAIL",
+        "CG-004": "FAIL",
+        "CG-005": "PASS",
+        "CG-006": "PASS",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "FAIL"
+      }
+    },
+    "r06-aaa-banner-ntp.cfg": {
+      "hostname": "DC-R06",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "FAIL",
+        "CG-006": "PASS",
+        "CG-007": "PASS",
+        "CG-008": "FAIL",
+        "CG-009": "PASS",
+        "CG-010": "FAIL",
+        "CG-011": "PASS",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "PASS"
+      }
+    },
+    "r07-partial-vty.cfg": {
+      "hostname": "DC-R07",
+      "expected": {
+        "CG-001": "FAIL",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "PASS",
+        "CG-006": "PASS",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "FAIL",
+        "CG-010": "PASS",
+        "CG-011": "FAIL",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "PASS"
+      }
+    },
+    "r08-not-applicable.cfg": {
+      "hostname": "CORE-R08",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "FAIL",
+        "CG-005": "PASS",
+        "CG-006": "NOT_APPLICABLE",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "FAIL",
+        "CG-013": "NOT_APPLICABLE",
+        "CG-014": "PASS"
+      }
+    },
+    "r09-injection-bait.cfg": {
+      "hostname": "EDGE-R09",
+      "expected": {
+        "CG-001": "PASS",
+        "CG-002": "PASS",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "PASS",
+        "CG-006": "PASS",
+        "CG-007": "PASS",
+        "CG-008": "PASS",
+        "CG-009": "FAIL",
+        "CG-010": "PASS",
+        "CG-011": "PASS",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "PASS"
+      }
+    },
+    "r10-mixed.cfg": {
+      "hostname": "EDGE-R10",
+      "expected": {
+        "CG-001": "FAIL",
+        "CG-002": "FAIL",
+        "CG-003": "PASS",
+        "CG-004": "PASS",
+        "CG-005": "FAIL",
+        "CG-006": "FAIL",
+        "CG-007": "FAIL",
+        "CG-008": "PASS",
+        "CG-009": "PASS",
+        "CG-010": "PASS",
+        "CG-011": "FAIL",
+        "CG-012": "PASS",
+        "CG-013": "PASS",
+        "CG-014": "FAIL"
+      }
+    }
+  }
+}
