@@ -58,13 +58,24 @@ DEVICES: dict[str, tuple[str, set[str], set[str], dict[str, str]]] = {
 }
 
 
+# Realistic platform identity per device: (software version, platform PID, serial number)
+PLATFORMS = {
+    "EDGE-R01": ("17.9", "C8300-1N1S-6T", "FDO2648M1KA"), "EDGE-R02": ("17.6", "ISR4451-X/K9", "FDO2213A0BC"),
+    "BR-R03": ("17.9", "C8200-1N-4T", "FGL2731L0QZ"), "BR-R04": ("16.12", "ISR4331/K9", "FDO2109B1XY"),
+    "BR-R05": ("17.3", "ISR4321/K9", "FDO2044A2LM"), "DC-R06": ("17.9", "ASR1001-X", "FXS2216Q0JK"),
+    "DC-R07": ("17.6", "C8500-12X4QC", "FDO2618P0RT"), "CORE-R08": ("17.9", "C8500-12X", "FDO2620P1AB"),
+    "EDGE-R09": ("17.12", "C8300-2N2S-4T2X", "FDO2741M0CD"), "EDGE-R10": ("17.3", "ISR4431/K9", "FOC2129X0EF"),
+}
+
+
 def build(hostname: str, fail: set[str], opt: dict[str, str]) -> list[str]:
     s = SECRETS
+    version, pid, serial = PLATFORMS[hostname]
     out: list[str] = [
         "!",
         "! Last configuration change at 09:14:22 UTC Mon Sep 14 2026",
         "!",
-        "version 17.9",
+        f"version {version}",
         "service timestamps debug datetime msec",
         "service timestamps log datetime msec",
     ]
@@ -183,6 +194,8 @@ def build(hostname: str, fail: set[str], opt: dict[str, str]) -> list[str]:
         out += [f"ntp authentication-key 1 md5 {s['ntp_key']} 7", "ntp authenticate", "ntp trusted-key 1",
                 "ntp server 10.1.1.10 key 1 prefer"]
     out.append("!")
+
+    out += [f"license udi pid {pid} sn {serial}", "!"]
 
     # Banner
     if "CG-008" not in fail:

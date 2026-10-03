@@ -89,3 +89,8 @@ def test_record_remediation_rejects_fix_that_does_not_resolve(fixture_ctx) -> No
     assert result["ok"] is False and "would still FAIL" in result["errors"][0]
     assert "snmp-server host 10.1.1.60" in result["errors"][0]
     assert "public" not in result["errors"][0].replace("no snmp-server community public", "")
+
+
+def test_new_lines_are_placed_before_end() -> None:
+    out = apply_commands(["hostname R1", "end"], ["no ip http server", "ip access-list standard M", " permit any", "exit"])
+    assert out[-1] == "end" and out.index("no ip http server") < out.index("end")

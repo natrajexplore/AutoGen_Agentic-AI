@@ -26,6 +26,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="configguard", description="Multi-agent Cisco IOS config compliance audit.")
     parser.add_argument("--baseline", type=Path, help="baseline YAML (default: BASELINE_PATH or baselines/cisco_ios_v1.yaml)")
     parser.add_argument("--no-remediation-export", action="store_true", help="never write remediation scripts")
+    parser.add_argument("--reviewer", default=None, help="reviewer name recorded with decisions (default: REVIEWER_NAME)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     audit = sub.add_parser("audit", help="audit one config file")
@@ -71,7 +72,8 @@ async def run(args: argparse.Namespace) -> int:
         else:
             kwargs = {"config_path": args.config} if args.command == "audit" else {"resume_id": args.audit_id}
             summary.results.append(await audit_config(settings, client, console=not args.quiet, **kwargs))
-        await finalize(settings, summary, HumanApprover(), export_allowed=not args.no_remediation_export)
+        reviewer = (args.reviewer or settings.reviewer_name).strip()[:80]
+        await finalize(settings, summary, HumanApprover(reviewer=reviewer), export_allowed=not args.no_remediation_export)
     finally:
         await client.close()
 

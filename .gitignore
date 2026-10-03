@@ -22,5 +22,9 @@ reports/
 remediation/
 uploads/
 
+# Risk-acceptance register (contains reviewer names and justifications).
+# Remove this line if you want to version your register with the repo.
+waivers.yaml
+
 # Tooling
 .pytest_cache/

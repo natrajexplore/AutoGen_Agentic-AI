@@ -5,6 +5,7 @@ These models are framework-agnostic: nothing here imports AutoGen.
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -12,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 Severity = Literal["critical", "high", "medium", "low"]
 Status = Literal["PASS", "FAIL", "NOT_APPLICABLE"]
 CheckType = Literal["global_required", "global_forbidden", "children_required", "python"]
+ReviewAction = Literal["approve_fix", "reject_fix", "accept_risk", "false_positive"]
 
 
 # --------------------------------------------------------------------------- baseline
@@ -74,6 +76,15 @@ class Rule(BaseModel):
     remediation_hint: list[str] = Field(default_factory=list)
     lockout_risk: bool = False
     advisory: str | None = None
+    # Public control IDs per framework, e.g. {"NIST SP 800-53 Rev. 5": ["AC-17(2)"]}. Best-effort mapping.
+    frameworks: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class Reference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    url: str = Field(pattern=r"^https://")
 
 
 class BaselineSettings(BaseModel):
@@ -82,6 +93,7 @@ class BaselineSettings(BaseModel):
     external_interface_pattern: str = r"(?i)\b(wan|internet|isp|external|uplink-ext)\b"
     max_exec_timeout_minutes: int = 15
     default_snmp_communities: list[str] = Field(default_factory=lambda: ["public", "private"])
+    references: list[Reference] = Field(default_factory=list)
 
 
 class Baseline(BaseModel):
@@ -135,3 +147,36 @@ class Remediation(BaseModel):
     risk_summary: str
     commands: list[str]
     warnings: list[str] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- human review
+
+
+class ReviewDecision(BaseModel):
+    """A reviewer's decision on one FAIL finding."""
+
+    rule_id: str
+    action: ReviewAction
+    reviewer: str
+    comment: str = ""
+    ticket: str | None = None
+    expires: date | None = None  # accept_risk only
+    decided_at: datetime
+
+
+class Waiver(BaseModel):
+    """An accepted risk that carries over to future audits of the same device until it expires."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    device: str
+    rule_id: str
+    justification: str
+    approver: str
+    ticket: str | None = None
+    expires: date
+    created: date
+    audit_id: str | None = None
+
+    def active(self, today: date) -> bool:
+        return self.expires >= today

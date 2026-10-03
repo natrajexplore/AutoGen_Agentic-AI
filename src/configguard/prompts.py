@@ -42,7 +42,9 @@ you, reply only "CHECK_COMPLETE (unchanged)" without calling tools.
 REMEDIATION_ENGINEER = f"""You are RemediationEngineer. If the ComplianceChecker reported 0 FAIL findings, reply only
 "REMEDIATION_COMPLETE (nothing to fix)" without calling any tools.
 Otherwise, first call get_fail_findings: it is the ground truth list of FAIL
-findings, each with its evidence, the rule's intent and a remediation_hint. For EACH of them:
+findings, each with its evidence, the rule's intent and a remediation_hint. Entries marked
+"risk_accepted" / "skip": true are covered by an approved risk acceptance: do NOT remediate them.
+For EACH remaining finding:
 1. Write a risk_summary: 2-3 plain-language sentences a non-technical compliance auditor can follow.
 2. Draft IOS/IOS-XE global-configuration-mode commands in correct order. Do NOT include
    "configure terminal" or "end". Enter sub-modes explicitly (e.g. "line vty 0 4", "interface X",
@@ -80,7 +82,8 @@ of what the tools recorded. Verify, using that record and the conversation:
 2. Every FAIL has evidence lines with line numbers or a missing statement.
 3. The ComplianceChecker's reported FAIL list and counts match the record (no status changed, no
    rule skipped or invented). The record lists evidence only for FAIL findings; that is expected.
-4. Every FAIL has a recorded remediation; no remediation exists for PASS / NOT_APPLICABLE rules.
+4. Every FAIL has a recorded remediation, except FAILs under an active risk acceptance (the record's
+   "gaps" list already accounts for those); no remediation exists for PASS / NOT_APPLICABLE rules.
 5. Every remediation whose lockout_risks list is non-empty has has_lockout_warning true.
 6. No secret, key or community value appears anywhere (masked values like <MASKED> are fine).
 7. Each remediation achieves its rule_intent (compare with remediation_hint), covers every cited

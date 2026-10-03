@@ -20,17 +20,28 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from configguard import runner
-from configguard.approval import HumanApprover, eligible_devices
+from configguard.approval import StructuredApprover, validate_review
 from configguard.config.model_client import build_model_client
 from configguard.config.settings import Settings
 from configguard.reporting import DeviceResult
 from configguard.tools.baseline import read_baseline
 from configguard.tools.loader import MAX_CONFIG_BYTES
-from configguard.web.history import audit_detail, list_audits, output_file
+from configguard.waivers import WaiverStore
+from configguard.web.dashboard import build_dashboard
+from configguard.web.history import (
+    audit_detail,
+    config_view,
+    list_audits,
+    load_result,
+    output_file,
+    remediation_preview,
+)
 
 STATIC = Path(__file__).parent / "static"
 _NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,100}$")
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
+_RULE = re.compile(r"^CG-\d{3}$")
+MAX_ANSWER = 200_000  # a structured review for a large batch is a few KB; this bounds abuse
 
 
 def result_summary(r: DeviceResult) -> dict[str, Any]:
@@ -48,6 +59,8 @@ def result_summary(r: DeviceResult) -> dict[str, Any]:
         "cost_usd": round(r.cost_usd, 6),
         "findings": [f.model_dump() for f in ctx.findings.values()],
         "remediations": {k: v.model_dump() for k, v in ctx.remediations.items()},
+        "facts": ctx.facts,
+        "assessment": r.assessment.to_dict(),
     }
 
 
@@ -132,6 +145,8 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
             "baseline": settings.baseline_path.name,
             "api_key_configured": bool(os.getenv(key_var)) if key_var else True,
             "busy": run_lock.locked(),
+            "max_waiver_days": settings.max_waiver_days,
+            "reviewer_name": settings.reviewer_name,
         }
 
     @app.get("/api/configs")
@@ -198,6 +213,78 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
             raise HTTPException(404, "file not found")
         return path.read_text(encoding="utf-8")
 
+    @app.get("/api/audits/{audit_id}/view/config")
+    def audit_config_view(audit_id: str) -> dict[str, Any]:
+        try:
+            view = config_view(settings, audit_id)
+        except ValueError:
+            view = None
+        if view is None:
+            raise HTTPException(404, "audit not found")
+        return view
+
+    @app.get("/api/audits/{audit_id}/view/preview")
+    def audit_preview(audit_id: str, scope: str = "all") -> dict[str, Any]:
+        if scope not in ("all", "approved"):
+            raise HTTPException(400, "scope must be 'all' or 'approved'")
+        try:
+            view = remediation_preview(settings, audit_id, scope)
+        except ValueError:
+            view = None
+        if view is None:
+            raise HTTPException(404, "audit not found")
+        return view
+
+    @app.post("/api/audits/{audit_id}/review")
+    async def review_audit(audit_id: str, request: Request) -> dict[str, Any]:
+        """Post-hoc human review from History (e.g. an audit whose review was never completed)."""
+        body = await request.body()
+        if len(body) > MAX_ANSWER:
+            raise HTTPException(413, "review too large")
+        try:
+            raw = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "review must be JSON") from None
+        if run_lock.locked():
+            raise HTTPException(409, "an audit is running; try again when it finishes")
+        async with run_lock:
+            try:
+                result = load_result(settings, audit_id)
+            except ValueError:
+                result = None
+            if result is None:
+                raise HTTPException(404, "audit not found")
+            if isinstance(raw, dict):
+                raw["decisions"] = {audit_id: (raw.get("decisions") or {}).get(audit_id, {})}
+            outcome, errors = validate_review(raw, [result], export_allowed=True, max_waiver_days=settings.max_waiver_days)
+            if errors:
+                return JSONResponse({"detail": "review not recorded", "errors": errors}, status_code=422)
+            summary = runner.RunSummary(results=[result])
+            runner.apply_review(settings, summary, outcome)
+        return {"ok": True, "written": [str(p) for p in summary.written], "assessment": result.assessment.to_dict()}
+
+    @app.get("/api/dashboard")
+    def dashboard() -> dict[str, Any]:
+        return build_dashboard(settings)
+
+    @app.get("/api/waivers")
+    def waivers() -> list[dict[str, Any]]:
+        from datetime import date
+
+        today = date.today()
+        out = []
+        for w in WaiverStore(settings.waivers_path).load():
+            out.append({**w.model_dump(mode="json"), "active": w.active(today), "days_left": (w.expires - today).days})
+        return sorted(out, key=lambda w: (not w["active"], w["expires"]))
+
+    @app.delete("/api/waivers/{device}/{rule_id}")
+    def revoke_waiver(device: str, rule_id: str) -> dict[str, Any]:
+        if not _NAME.match(device) or not _RULE.match(rule_id):
+            raise HTTPException(400, "invalid device or rule id")
+        if not WaiverStore(settings.waivers_path).revoke(device, rule_id):
+            raise HTTPException(404, "waiver not found")
+        return {"ok": True}
+
     # ------------------------------------------------------------------ live runs
 
     @app.websocket("/ws/run")
@@ -220,7 +307,7 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
                 msg = await ws.receive_json()
                 action = msg.get("action")
                 if action == "answer":
-                    if not answers.offer(str(msg.get("text", ""))[:500]):
+                    if not answers.offer(str(msg.get("text", ""))[:MAX_ANSWER]):
                         outbox.put_nowait({"type": "error", "message": "no approval question is waiting; answer ignored"})
                 elif action == "start":
                     if run_lock.locked() or (run_task and not run_task.done()):
@@ -280,25 +367,20 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
                     summary.results.append(result)
                     outbox.put_nowait({"type": "audit_end", "index": index, "result": result_summary(result)})
 
-                results = summary.results
-
                 async def web_input(_prompt: str, _token: Any = None) -> str:
-                    kind, question = approver.pending or ("text", "")
+                    kind, question, payload = approver.pending or ("text", "", None)
                     answers.expect()
-                    outbox.put_nowait({
-                        "type": "question", "kind": kind, "text": question,
-                        "devices": [{"device": r.device, "audit_id": r.ctx.audit_id, "approved": r.approved,
-                                     "counts": r.counts} for r in results],
-                        "eligible": eligible_devices(results),
-                    })
+                    outbox.put_nowait({"type": "question", "kind": kind, "text": question, "payload": payload})
                     return await answers.wait()
 
-                approver = HumanApprover(input_func=web_input, output=lambda _text: None)
+                approver = StructuredApprover(input_func=web_input, output=lambda _text: None,
+                                              reviewer=settings.reviewer_name)
                 await runner.finalize(settings, summary, approver, export_allowed=export_allowed)
                 outbox.put_nowait({
                     "type": "run_end", "all_approved": summary.all_approved,
                     "written": [str(p) for p in summary.written], "errors": summary.errors,
-                    "decisions": approver.transcript,
+                    "audit_ids": [r.ctx.audit_id for r in summary.results],
+                    "assessments": {r.ctx.audit_id: r.assessment.to_dict() for r in summary.results},
                 })
             finally:
                 await client.close()

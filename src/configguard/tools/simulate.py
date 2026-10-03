@@ -171,6 +171,8 @@ def verify_fix(ctx: AuditContext, rule_id: str, commands: list[str]) -> Finding 
 
 
 def _render(blocks: list[Block]) -> list[str]:
+    # `end` closes a running-config: anything added after it belongs before it
+    blocks = [b for b in blocks if b.text.lower() != "end"] + [b for b in blocks if b.text.lower() == "end"]
     out: list[str] = []
     for b in blocks:
         out.append(b.text)

@@ -14,8 +14,10 @@
       <span>ConfigGuard</span>
     </div>
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-view="run" role="tab">Run</button>
+      <button class="tab active" data-view="dashboard" role="tab">Dashboard</button>
+      <button class="tab" data-view="run" role="tab">Run audit</button>
       <button class="tab" data-view="history" role="tab">History</button>
+      <button class="tab" data-view="risk" role="tab">Risk register</button>
       <button class="tab" data-view="baseline" role="tab">Baseline</button>
     </nav>
     <div class="meta" id="meta"></div>
@@ -25,46 +27,56 @@
     No API key configured for the selected model provider. Add it to <code>.env</code> and restart <code>configguard ui</code>.
   </div>
 
+  <!-- DASHBOARD -->
+  <main class="view" id="view-dashboard">
+    <div class="page-head">
+      <div><h1>Fleet compliance posture</h1><p class="hint" id="dash-sub">Latest audit of every device.</p></div>
+      <button class="btn small ghost" id="dash-refresh">Refresh</button>
+    </div>
+    <div id="dash-body"></div>
+  </main>
+
   <!-- RUN -->
-  <main class="view" id="view-run">
-    <aside class="panel side">
-      <div class="panel-head">
-        <h2>Configs</h2>
-        <label class="btn small ghost" title="Upload a config file">
-          Upload<input type="file" id="upload" accept=".cfg,.txt,.conf,.ios" hidden>
-        </label>
-      </div>
-      <input type="search" id="config-filter" placeholder="Filter configs" aria-label="Filter configs">
-      <div class="select-row">
-        <button class="link" id="select-all">Select all</button>
-        <button class="link" id="select-none">Clear</button>
-      </div>
-      <ul class="config-list" id="config-list"></ul>
-      <label class="check"><input type="checkbox" id="export-allowed" checked> Offer remediation export</label>
-      <button class="btn primary block" id="run-btn" disabled>Run audit</button>
-      <p class="hint" id="run-hint">Select one config for a live audit, or several for a batch.</p>
-    </aside>
-
-    <section class="main-col">
-      <div class="panel pipeline" id="pipeline">
-        <div class="agent-node" data-agent="ConfigParser"><span class="dot"></span><div><b>ConfigParser</b><small>parse &amp; mask</small></div><em class="count"></em></div>
-        <div class="arrow">&rarr;</div>
-        <div class="agent-node" data-agent="ComplianceChecker"><span class="dot"></span><div><b>ComplianceChecker</b><small>rule engine</small></div><em class="count"></em></div>
-        <div class="arrow">&rarr;</div>
-        <div class="agent-node" data-agent="RemediationEngineer"><span class="dot"></span><div><b>RemediationEngineer</b><small>risk &amp; fixes</small></div><em class="count"></em></div>
-        <div class="arrow">&rarr;</div>
-        <div class="agent-node" data-agent="Critic"><span class="dot"></span><div><b>Critic</b><small>quality gate</small></div><em class="count"></em></div>
-        <div class="arrow">&rarr;</div>
-        <div class="agent-node" data-agent="HumanApprover"><span class="dot"></span><div><b>HumanApprover</b><small>you</small></div><em class="count"></em></div>
-      </div>
-
-      <div id="run-area">
-        <div class="empty" id="run-empty">
-          <h3>Watch the agents work</h3>
-          <p>Pick a config and press <b>Run audit</b>. Each agent's messages and tool calls stream here live, followed by the findings, remediation, and your approval.</p>
+  <main class="view hidden" id="view-run">
+    <div class="run-grid">
+      <aside class="panel side">
+        <div class="panel-head">
+          <h2>Configs</h2>
+          <label class="btn small ghost" title="Upload a config file">
+            Upload<input type="file" id="upload" accept=".cfg,.txt,.conf,.ios" hidden>
+          </label>
         </div>
-      </div>
-    </section>
+        <input type="search" id="config-filter" placeholder="Filter configs" aria-label="Filter configs">
+        <div class="select-row">
+          <button class="link" id="select-all">Select all</button>
+          <button class="link" id="select-none">Clear</button>
+        </div>
+        <ul class="config-list" id="config-list"></ul>
+        <label class="check"><input type="checkbox" id="export-allowed" checked> Allow approving fixes for export</label>
+        <button class="btn primary block" id="run-btn" disabled>Run audit</button>
+        <p class="hint">One config runs a live audit; several run a batch with one review at the end.</p>
+      </aside>
+
+      <section class="main-col">
+        <div class="panel pipeline" id="pipeline">
+          <div class="agent-node" data-agent="ConfigParser"><span class="dot"></span><div><b>ConfigParser</b><small>parse &amp; mask</small></div><em class="count"></em></div>
+          <div class="arrow">&rarr;</div>
+          <div class="agent-node" data-agent="ComplianceChecker"><span class="dot"></span><div><b>ComplianceChecker</b><small>rule engine</small></div><em class="count"></em></div>
+          <div class="arrow">&rarr;</div>
+          <div class="agent-node" data-agent="RemediationEngineer"><span class="dot"></span><div><b>RemediationEngineer</b><small>risk &amp; fixes</small></div><em class="count"></em></div>
+          <div class="arrow">&rarr;</div>
+          <div class="agent-node" data-agent="Critic"><span class="dot"></span><div><b>Critic</b><small>quality gate</small></div><em class="count"></em></div>
+          <div class="arrow">&rarr;</div>
+          <div class="agent-node" data-agent="HumanApprover"><span class="dot"></span><div><b>HumanApprover</b><small>you</small></div><em class="count"></em></div>
+        </div>
+        <div id="run-area">
+          <div class="empty">
+            <h3>Watch the agents work</h3>
+            <p>Pick a config and press <b>Run audit</b>. Each agent's messages and tool calls stream here live. When the agents finish, you review every failed control: approve the fix, reject it, accept the risk, or mark it a false positive.</p>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- HISTORY -->
@@ -72,17 +84,40 @@
     <section class="panel wide">
       <div class="panel-head">
         <h2>Audit history</h2>
-        <button class="btn small ghost" id="history-refresh">Refresh</button>
+        <div class="select-row">
+          <input type="search" id="history-filter" placeholder="Filter by device, config, status" aria-label="Filter history">
+          <button class="btn small ghost" id="history-refresh">Refresh</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="grid" id="history-table">
-          <thead><tr><th>Started</th><th>Device</th><th>Config</th><th>Status</th><th>FAIL</th><th>PASS</th><th>N/A</th><th>Time</th><th>Cost</th></tr></thead>
+          <thead><tr><th>Started</th><th>Device</th><th>Platform</th><th>Score</th><th>Rating</th><th>AI review</th><th>Human review</th><th>Open</th><th>Cost</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p class="hint hidden" id="history-empty">No audits yet. Run one from the Run tab.</p>
+      <p class="hint hidden" id="history-empty">No audits yet. Run one from the Run audit tab.</p>
     </section>
-    <section class="panel wide hidden" id="history-detail"></section>
+  </main>
+
+  <!-- AUDIT DETAIL -->
+  <main class="view hidden" id="view-audit"></main>
+
+  <!-- RISK REGISTER -->
+  <main class="view hidden" id="view-risk">
+    <section class="panel wide">
+      <div class="panel-head">
+        <div><h2>Risk acceptance register</h2>
+          <p class="hint">Accepted risks carry over to future audits of the same device until they expire. The violation is still detected; it is shown as <b>risk accepted</b> instead of open.</p></div>
+        <button class="btn small ghost" id="risk-refresh">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table class="grid" id="risk-table">
+          <thead><tr><th>Status</th><th>Device</th><th>Control</th><th>Justification</th><th>Approved by</th><th>Ticket</th><th>Created</th><th>Expires</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint hidden" id="risk-empty">No accepted risks. Risks are accepted during human review.</p>
+    </section>
   </main>
 
   <!-- BASELINE -->
@@ -92,10 +127,11 @@
       <p class="hint" id="baseline-settings"></p>
       <div class="table-wrap">
         <table class="grid" id="baseline-table">
-          <thead><tr><th>Rule</th><th>Title</th><th>Severity</th><th>Category</th><th>Check</th><th>Lockout risk</th></tr></thead>
+          <thead><tr><th>Rule</th><th>Title</th><th>Severity</th><th>Frameworks</th><th>Check</th><th>Lockout risk</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
+      <p class="hint">Framework mappings are best-effort public control IDs; verify them with your compliance team.</p>
     </section>
   </main>
 

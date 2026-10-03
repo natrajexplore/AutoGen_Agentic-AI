@@ -33,6 +33,15 @@ def save_checkpoint(state_dir: Path, ctx: AuditContext, team_state: Any, status:
     return path
 
 
+def update_context(state_dir: Path, ctx: AuditContext) -> None:
+    """Rewrite the context part of an existing checkpoint (e.g. after human review)."""
+    path = checkpoint_path(state_dir, ctx.audit_id)
+    payload = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"status": "reviewed", "team": None}
+    payload["context"] = ctx.to_dict()
+    state_dir.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, default=str, indent=1), encoding="utf-8")
+
+
 def load_checkpoint(state_dir: Path, audit_id: str) -> tuple[AuditContext, Any, str]:
     path = checkpoint_path(state_dir, audit_id)
     if not path.is_file():

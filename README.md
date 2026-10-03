@@ -9,7 +9,7 @@ Built with [Microsoft AutoGen](https://github.com/microsoft/autogen) AgentChat �
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![AutoGen](https://img.shields.io/badge/AutoGen%20AgentChat-0.7.5-5C2D91)
 ![FastAPI](https://img.shields.io/badge/FastAPI-web%20UI-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-232%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-266%20passing-2ea44f)
 ![Accuracy](https://img.shields.io/badge/accuracy-140%2F140%20verdicts-2ea44f)
 
 </div>
@@ -24,13 +24,17 @@ auditors, and drafts IOS remediation for engineers to review.
 
 ## Contents
 
+- [What's new](#whats-new)
 - [Why ConfigGuard](#why-configguard)
 - [Highlights](#highlights)
+- [Screenshots](#screenshots)
 - [How it works](#how-it-works)
 - [Meet the agents](#meet-the-agents)
 - [Results](#results)
 - [Quick start](#quick-start)
 - [Web UI](#web-ui)
+- [Human review and risk acceptance](#human-review-and-risk-acceptance)
+- [Scores and ratings](#scores-and-ratings)
 - [Command line](#command-line)
 - [Configuration](#configuration)
 - [Outputs](#outputs)
@@ -42,6 +46,32 @@ auditors, and drafts IOS remediation for engineers to review.
 - [Troubleshooting](#troubleshooting)
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
+
+## What's new
+
+**Dashboards, audit-grade reports and per-finding human sign-off**
+
+- 📊 **Fleet dashboard:** compliance score and risk rating per device, a device × control heatmap,
+  most frequently failing controls, open findings by severity, a score trend and AI spend.
+- 🔎 **Audit detail page:** device facts, a filterable findings list, a masked config viewer with
+  evidence lines highlighted, and a before/after change preview of the proposed fixes.
+- 🧑‍⚖️ **Per-finding review:** approve the fix, reject it, accept the risk until a date, or mark a
+  false positive. Each decision records reviewer, time and change ticket. Only approved fixes are
+  exported.
+- 📋 **Risk-acceptance register:** accepted risks carry over to future audits and reopen when they
+  expire.
+- 📄 **Professional report layout:** executive summary, scope and device facts, findings register
+  with NIST SP 800-53 / PCI DSS v4.0 / ISO 27001:2022 control IDs, risk register and sign-off.
+
+<details>
+<summary><b>Earlier milestones</b></summary>
+
+- **Safeguards and token savings:** hard caps on tokens, time and reply length; ReDoS-safe search;
+  bounded remediation inputs; about 20% fewer tokens with no loss of accuracy.
+- **Local web UI:** live agent timeline over WebSockets, history with replay, baseline viewer.
+- **Core engine:** four AutoGen agents, a deterministic rule engine, secret masking, verified
+  remediation, pause/resume, batch mode and an independent ground-truth test set.
+</details>
 
 ## Why ConfigGuard
 
@@ -69,15 +99,48 @@ fix it; a human approves.**
   in-memory copy of the config, and the rule is re-run to prove the fix resolves the finding.
 - ⚠️ **Lockout-aware.** Changes that could cut off management access (vty transport, ACLs, AAA)
   must carry a `LOCKOUT WARNING` that names a recovery path.
-- 🧑‍⚖️ **Human in the loop.** Nothing is exported or overwritten without explicit approval, in the
-  terminal or as buttons in the web UI.
+- 🧑‍⚖️ **Per-finding human sign-off.** For every failed control the reviewer approves the fix, rejects
+  it, accepts the risk (with justification and expiry), or marks a false positive. Each decision
+  records reviewer, time and change ticket, and **only approved fixes are exported**.
+- 📋 **Risk-acceptance register.** Accepted risks carry over to future audits of the same device
+  until they expire. The violation is still detected but shown as *risk accepted*, and it reopens
+  automatically when the waiver expires.
+- 📊 **Fleet dashboard.** Compliance score and risk rating per device, open findings by severity,
+  the most frequently failing controls, a device × control heatmap, and a score trend over time.
+- 📄 **Audit-grade reports.** Executive summary, device facts (platform, IOS-XE version, serial),
+  findings register with NIST SP 800-53 / PCI DSS v4.0 / ISO 27001:2022 control IDs, detailed
+  findings, risk register and reviewer sign-off.
 - 👀 **Watch the agents work.** A local web UI streams every agent message and tool call live,
-  with full history and replay.
+  with a masked config viewer, a before/after change preview, and full history and replay.
 - 💸 **Spend-safe.** Hard caps on tokens, time and reply length for every audit. Each run logs
   its tokens and cost.
 - ⏸️ **Pause and resume.** Audits are checkpointed and can be resumed. A checkpoint refuses to resume
   against a config that has changed.
 - 🔌 **Model-agnostic.** OpenAI by default. Switch to Anthropic or Ollama with one setting.
+
+## Screenshots
+
+> Captured from the local UI auditing the synthetic test configs in `tests/fixtures/`. The reviewer
+> name is demo data, and all configuration text is masked.
+
+**Fleet dashboard:** posture across the latest audit of every device, with a clickable heatmap.
+
+![Fleet dashboard](docs/images/dashboard.png)
+
+<table>
+<tr>
+<td width="50%"><b>Audit overview</b>: score, device facts, key risks, sign-off<br><img src="docs/images/audit-overview.png" alt="Audit overview"></td>
+<td width="50%"><b>Findings</b>: F-numbered, filterable, with framework control IDs<br><img src="docs/images/audit-findings.png" alt="Findings list"></td>
+</tr>
+<tr>
+<td><b>Configuration viewer</b>: masked running-config, evidence highlighted by status<br><img src="docs/images/audit-config.png" alt="Masked config viewer"></td>
+<td><b>Remediation</b>: drafted fixes with decisions, and a before/after change preview<br><img src="docs/images/audit-remediation.png" alt="Remediation and change preview"></td>
+</tr>
+<tr>
+<td><b>Human review</b>: a decision per failed control, with evidence, risk and proposed fix<br><img src="docs/images/audit-review.png" alt="Per-finding review form"></td>
+<td><b>Risk register</b>: accepted risks with approver, ticket and expiry<br><img src="docs/images/risk-register.png" alt="Risk acceptance register"></td>
+</tr>
+</table>
 
 ## How it works
 
@@ -107,8 +170,10 @@ flowchart LR
    the finding when re-checked against a patched copy of the config.
 4. **Review.** The Critic checks the recorded results (not chat claims) for completeness, evidence
    and safety, then approves or sends work back.
-5. **Approve.** You decide which remediation scripts to export. Reports are built from the
-   recorded data, never from what the agents said in chat.
+5. **Sign off.** You decide on every failed control: approve the fix, reject it, accept the risk
+   until a date, or mark a false positive. Only approved fixes go into the remediation script.
+   Accepted risks go into the risk register (`waivers.yaml`). Reports are built from the recorded
+   data, never from what the agents said in chat.
 
 > **Design rule:** the LLM never decides a verdict and never sees a secret. See
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
@@ -205,13 +270,64 @@ uv run configguard ui            # http://127.0.0.1:8000   (--port to change)
 
 | Tab | What you can do |
 |---|---|
-| **Run** | Pick or upload a config (or several for a batch) and watch each agent's messages and tool calls stream live. Expand any tool call to see its arguments and result. Then review the findings and remediation, and approve the export with buttons. |
-| **History** | Browse every past audit: findings, remediation, a replay of the agent conversation, links to the report and script, and **Resume** for paused or unapproved audits. |
-| **Baseline** | Read the 14 rules. Click one to see its check definition and remediation hint. |
+| **Dashboard** | Fleet posture across the latest audit of each device: fleet compliance score, devices awaiting review, open findings by severity, risk ratings, most frequently failing controls, a device × control **heatmap** (click any cell to open that finding), the score trend, and AI spend. |
+| **Run audit** | Pick or upload configs and watch each agent's messages and tool calls stream live. When the agents finish, the **review form** lists every failed control with its evidence, risk and proposed fix: approve, reject, accept the risk (with expiry), or mark a false positive. |
+| **History** | Every past audit with score, rating, AI review and human review status. |
+| **Audit detail** | *Overview* (score gauge, device facts, key risks, sign-off) · *Findings* (filter by status, severity or text, with framework IDs) · *Configuration* (masked running-config with evidence lines highlighted; jump between open findings) · *Remediation* (drafted fixes plus a before/after **change preview**) · *Review* (decide or update decisions after the fact) · *Agent log* (full replay). Deep links: `#audit/<id>/<tab>`. |
+| **Risk register** | All accepted risks with justification, approver, ticket and expiry, plus warnings for waivers expiring soon. Revoke a waiver with an inline confirmation. |
+| **Baseline** | The 14 rules with severity, framework mappings, check definition and remediation hint. |
 
 The UI is **local-only by design**. It listens on `127.0.0.1`, rejects other Host headers (DNS
 rebinding) and cross-origin requests, so other web pages can't drive it or spend your API credits.
 Closing the tab mid-audit saves the audit as paused.
+
+## Human review and risk acceptance
+
+Every failed control gets an explicit human decision, as in a real audit sign-off. The rule
+engine's verdict never changes; the decision changes what happens next.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Open: rule engine FAIL
+    Open --> FixApproved: approve fix
+    Open --> FixRejected: reject fix
+    Open --> RiskAccepted: accept risk (justification + expiry)
+    Open --> FalsePositive: false positive (reason)
+    FixApproved --> [*]: fix exported in the script
+    FixRejected --> Open: stays open
+    RiskAccepted --> Open: waiver expires or is revoked
+    FalsePositive --> [*]: counts as passing
+```
+
+| Decision | Exported in script? | Compliance score | Open finding? | Carries over to future audits? | Required |
+|---|---|---|---|---|---|
+| **Approve fix** | ✅ yes | counts as failing until applied | yes (*fix approved*) | no | AI-approved audit with a verified fix |
+| **Reject fix** | no | failing | yes (*fix rejected*) | no | optional comment |
+| **Accept risk** | no | still failing (non-compliant) | **no** | ✅ until expiry, via `waivers.yaml` | justification (10+ chars), expiry ≤ `MAX_WAIVER_DAYS` |
+| **False positive** | no | counts as passing | **no** | no | reason (10+ chars) |
+| *Decide later* | no | failing | yes (*pending review*) | no | — |
+
+Every decision records the **reviewer, timestamp, comment and change ticket**. It appears in the
+report's findings register and sign-off section, in the CSV, in the History tab, and in
+`logs/<audit_id>.jsonl`. All rules are enforced **on the server** (`approval.validate_review`),
+whether the review comes from the terminal, a live run in the UI, or the History tab after the fact.
+
+**How waivers behave:** in later audits of the same device the violation is still detected, but it
+shows as *risk accepted*, the agents skip drafting a fix for it (saving tokens), and it **reopens
+automatically** when the waiver expires. Manage waivers in the **Risk register** tab.
+
+## Scores and ratings
+
+| | How it's calculated |
+|---|---|
+| **Compliance score** | Weighted share of applicable controls that pass: critical **10**, high **5**, medium **3**, low **1**. Not-applicable controls are excluded. A false positive counts as passing; an accepted risk still counts as failing. |
+| **Risk rating** | Severity of the worst **open** finding: *Critical*, *High*, *Medium*, *Low*, or *Compliant* when nothing is open. Accepted risks and false positives are not open. |
+| **Fleet score** | Average score across the latest audit of each device. |
+
+*Example:* a device failing one critical, one high and one medium control out of all 14 scores
+`(62 − 18) / 62 = 71.0%` and is rated **Critical**. Accepting the risk on the medium finding leaves
+the score at 71.0% (still non-compliant) but removes it from the open findings.
 
 ## Command line
 
@@ -227,11 +343,18 @@ python main.py audit tests/fixtures/r10-mixed.cfg            # same as `configgu
 | Option | Applies to | Effect |
 |---|---|---|
 | `--baseline PATH` | all (before the subcommand) | Use a different baseline YAML |
-| `--no-remediation-export` | all (before the subcommand) | Reports only; never write remediation scripts |
+| `--no-remediation-export` | all (before the subcommand) | Reports only; fixes can't be approved for export |
+| `--reviewer NAME` | all (before the subcommand) | Reviewer recorded with each decision |
 | `--quiet` | `audit`, `resume` | Don't stream the agent conversation |
 | `--stream` | `batch` | Stream each audit's conversation |
 | `--pattern GLOB` | `batch` | File pattern (default `*.cfg`) |
 | `--port N` | `ui` | Port for the web UI (default 8000) |
+
+**Human review in the terminal:** after the audits, ConfigGuard asks for your name (or uses
+`--reviewer` / `REVIEWER_NAME`) and an optional change ticket. It then walks through each failed
+control: `[a]pprove fix / [r]eject fix / [w] accept risk / [f]alse positive / [s]kip`, or `[A]` to
+approve all remaining fixes. Risk acceptance asks for a justification and an expiry date (default
+90 days). Anything you skip stays open, and nothing is exported for it.
 
 **Pause and resume:** press **Ctrl+C** during an audit to save it to `state/<audit_id>.json`. An
 audit that ends without approval is saved the same way. Run `configguard resume <audit_id>` to
@@ -255,6 +378,9 @@ All settings live in `.env` (copy from [`.env.example`](.env.example)). Only the
 | `MAX_REPLY_TOKENS` | `2048` | Cap on each model reply |
 | `REQUEST_TIMEOUT_S` | `60` | Timeout per API request (2 retries) |
 | `MAX_MESSAGES` | `25` | Message cap per audit |
+| `REVIEWER_NAME` | — | Default reviewer for terminal reviews (asked for if empty) |
+| `MAX_WAIVER_DAYS` | `365` | Longest allowed risk acceptance |
+| `WAIVERS_PATH` | `waivers.yaml` | Risk-acceptance register (gitignored by default) |
 | `BASELINE_PATH` | `baselines/cisco_ios_v1.yaml` | Baseline file |
 | `CONFIGS_DIR` / `UPLOADS_DIR` | `tests/fixtures` / `uploads` | Configs offered in the web UI |
 | `REPORTS_DIR` · `REMEDIATION_DIR` · `LOGS_DIR` · `STATE_DIR` | `reports` · `remediation` · `logs` · `state` | Output folders |
@@ -267,10 +393,11 @@ All settings live in `.env` (copy from [`.env.example`](.env.example)). Only the
 
 | Path | Contents |
 |---|---|
-| `reports/<device>.md` | Per-device report: summary for auditors, all findings with line numbers, risk and remediation for each FAIL |
-| `reports/summary-<timestamp>.csv` | `device, rule_id, severity, status, evidence` for every rule on every device |
+| `reports/<device>.md` | Audit report: executive summary, scope and device facts, findings register with framework IDs, detailed findings, compliant controls, risk register, reviewer sign-off, audit trail |
+| `reports/summary-<timestamp>.csv` | `device, rule_id, severity, status, evidence, review_status, reviewer, ticket, frameworks` for every rule on every device |
 | `reports/batch-summary-<timestamp>.md` | Batch table (also printed) |
-| `remediation/<device>_<audit_id>_remediation.txt` | Approved script, headed **REVIEW BEFORE APPLYING** |
+| `remediation/<device>_<audit_id>_remediation.txt` | **Only the fixes the reviewer approved**, headed **REVIEW BEFORE APPLYING** with approver and change ticket |
+| `waivers.yaml` | Risk-acceptance register: device, control, justification, approver, ticket, expiry |
 | `logs/<audit_id>.jsonl` | Every agent message, tool call and result, the human review, tokens and cost |
 | `state/<audit_id>.json` | Checkpoint for resume (contains no config text) |
 
@@ -317,17 +444,25 @@ Eligible: 2=EDGE-R02, 3=BR-R04
 <summary><b>Report excerpt</b> (<code>reports/EDGE-R10.md</code>)</summary>
 
 ```markdown
-## Summary for auditors
+# Network Device Security Compliance Audit Report
 
-**7 of 14 controls failed**, 7 passed, 0 not applicable.
+| | |
+|---|---|
+| Device | **EDGE-R10** · ISR4431/K9 · IOS-XE 17.3 |
+| Report ID | `CG-0b1df6cb63a4` |
+| Reviewed by | Jane Doe · ticket `CHG0042117` |
 
-| Severity | Control | What this means |
-|---|---|---|
-| CRITICAL | CG-006 No default SNMP community strings | The device uses a default SNMP community string, which is a common target for attackers ... |
+## 1. Executive summary
 
-| Rule | Severity | Status | Line(s) | Evidence |
-|---|---|---|---|---|
-| CG-006 | critical | **FAIL** | 68 | `snmp-server host 10.1.1.60 version 2c <MASKED:weak-default>` |
+**Compliance score: 33.9%** · **Risk rating: Critical** · AI quality review: approved
+
+## 3. Findings register
+
+| ID | Control | Title | Severity | Status | Frameworks |
+|---|---|---|---|---|---|
+| F-01 | CG-001 | Remote terminal access limited to SSH | Critical | Open - fix approved | NIST AC-17(2), SC-8; PCI 2.2.7; ISO/IEC A.8.20, A.8.24 |
+| F-04 | CG-005 | AAA enabled with a login authentication method | High | Open - fix rejected | NIST IA-2, AC-2; PCI 8.2.1, 8.3.1; ISO/IEC A.5.15, A.8.5 |
+| F-07 | CG-014 | Unused interfaces shut down | Low | Risk accepted until 2026-12-02 | NIST CM-7; ISO/IEC A.8.20 |
 ```
 </details>
 
@@ -404,12 +539,13 @@ The baseline is validated when it is loaded. Two conventions you may need to ada
 | **Runaway cost** | Each audit stops at the first of: approval, 25 messages, 150k tokens, or 300 s. Replies are capped at 2,048 tokens, and requests time out after 60 s. |
 | **Malicious regex patterns** | The `regex` engine runs model-supplied patterns with a 1-second budget for the whole search. |
 | **Web UI abuse** | Localhost only, Host and Origin checks, no client-supplied file paths, sanitised uploads, and approvals accepted only while a question is open. |
+| **Unsafe or forged approvals** | Every decision is validated on the server: only FAIL findings can be decided, fixes only for AI-approved audits with a verified remediation, justifications required for accepted risks and false positives, expiry capped at `MAX_WAIVER_DAYS`, ticket format checked, reviewer text sanitised. The browser's checks are never trusted. |
 | **Code execution** | No agent executes code, so no executor is configured. |
 
 ## Testing
 
 ```bash
-uv run pytest                    # 232 offline tests, no API calls (about 6 s)
+uv run pytest                    # 266 offline tests, no API calls (about 8 s)
 uv run pytest -m llm -s          # live run on all 10 fixtures (about 4 min, about $0.47 with gpt-4o)
 uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures and expected_results.json
 ```
@@ -419,8 +555,8 @@ uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures and ex
 - **Coverage.** The fixtures include a fully compliant config (r01), one with all 14 violations (r02),
   NOT_APPLICABLE cases (r08) and a prompt-injection bait config (r09).
 - **What's tested.** Every tool, the rule engine's edge cases, masking (including leak tests), the
-  remediation patcher, reports, approvals, checkpoints, the web backend (with a fake agent run)
-  and the spend safeguards.
+  remediation patcher, reports, per-finding review validation, scoring, waivers, device facts,
+  checkpoints, the web backend and dashboard (with a fake agent run) and the spend safeguards.
 
 ## Project structure
 
@@ -435,14 +571,16 @@ AutoGen_Agentic-AI/
 │   ├── cli.py · runner.py        # CLI; single, batch and resume orchestration
 │   ├── team.py                   # RoundRobinGroupChat, termination, spend caps
 │   ├── agents/factory.py         # the four AssistantAgents and their tool bindings
-│   ├── approval.py               # HumanApprover (UserProxyAgent) gate
+│   ├── approval.py               # HumanApprover (UserProxyAgent): per-finding review + validation
+│   ├── scoring.py · facts.py     # compliance score / risk rating, device facts
+│   ├── waivers.py                # risk-acceptance register (waivers.yaml)
 │   ├── prompts.py                # agent system messages
 │   ├── tools/                    # framework-agnostic tools (no AutoGen imports)
 │   │   ├── loader.py · masking.py · parser.py
 │   │   ├── baseline.py · rule_checks.py        # deterministic rule engine
 │   │   ├── ios_syntax.py · simulate.py         # remediation validation and verification
 │   │   └── audit_record.py                     # read-only views for agents
-│   ├── web/                      # FastAPI backend + static UI (index.html, app.js, styles.css)
+│   ├── web/                      # FastAPI backend (app, history, dashboard) + static UI
 │   ├── reporting.py              # Markdown, CSV, remediation scripts
 │   ├── telemetry.py              # JSONL logging, token and cost tracking
 │   ├── persistence.py            # pause/resume checkpoints
@@ -505,6 +643,10 @@ new audit for the updated config.
 - **Interface classification depends on descriptions** (CG-013), and line numbers assume
   `show running-config` formatting.
 - **Batch audits run one at a time.** That avoids rate limits, but takes roughly 15–30 s per device.
+- **Framework mappings are best-effort.** The NIST / PCI / ISO control IDs were written for
+  ConfigGuard and have not been reviewed by an assessor. Verify them before relying on them.
+- **Device identity is the hostname.** Waivers and the dashboard key devices by hostname, so two
+  devices sharing a hostname are treated as one.
 - **Ctrl+C pause is untested.** Resume after an early stop is tested live. Saving mid-run on
   Ctrl+C has no automated test yet.
 

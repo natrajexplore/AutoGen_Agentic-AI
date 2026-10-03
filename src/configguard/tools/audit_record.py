@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from configguard.context import AuditContext
+from configguard.scoring import active_waivers
 from configguard.tools.ios_syntax import LOCKOUT_MARKER, lockout_risks
 from configguard.tools.loader import error
 
@@ -17,8 +18,10 @@ def audit_gaps(ctx: AuditContext) -> list[str]:
     if ctx.baseline is None:
         return ["baseline not loaded"]
     gaps = [f"{r.id}: no finding recorded" for r in ctx.baseline.rules if r.id not in ctx.findings]
+    waived = active_waivers(ctx.waivers, ctx.hostname)
     for rule_id, finding in ctx.findings.items():
-        if finding.status == "FAIL" and rule_id not in ctx.remediations:
+        # a FAIL under an active risk acceptance needs no remediation
+        if finding.status == "FAIL" and rule_id not in ctx.remediations and rule_id not in waived:
             gaps.append(f"{rule_id}: FAIL has no recorded remediation")
     for rule_id in ctx.remediations:
         if rule_id in ctx.findings and ctx.findings[rule_id].status != "FAIL":
@@ -31,9 +34,14 @@ def get_fail_findings(ctx: AuditContext) -> dict[str, Any]:
     if ctx.baseline is None or not ctx.findings:
         return error("no findings recorded yet; the ComplianceChecker must run first")
     fails = []
+    waived = active_waivers(ctx.waivers, ctx.hostname)
     for rule in ctx.baseline.rules:
         f = ctx.findings.get(rule.id)
-        if f and f.status == "FAIL":
+        if f and f.status == "FAIL" and rule.id in waived:
+            w = waived[rule.id]
+            fails.append({"rule_id": rule.id, "risk_accepted": True, "skip": True,
+                          "waiver": {"approver": w.approver, "expires": w.expires.isoformat()}})
+        elif f and f.status == "FAIL":
             fails.append(
                 {
                     "rule_id": rule.id,
@@ -46,7 +54,7 @@ def get_fail_findings(ctx: AuditContext) -> dict[str, Any]:
                     "already_recorded": rule.id in ctx.remediations,
                 }
             )
-    return {"ok": True, "fail_count": len(fails), "fails": fails}
+    return {"ok": True, "fail_count": len(fails), "fails": fails}  # entries with skip=true need no fix
 
 
 def get_audit_record(ctx: AuditContext) -> dict[str, Any]:

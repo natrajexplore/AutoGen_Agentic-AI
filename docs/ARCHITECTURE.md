@@ -52,6 +52,26 @@ rounds cheap. Only messages whose `source` is `Critic` can end the run
 (`TextMentionTermination("AUDIT_APPROVED", sources=["Critic"])`), so the approval keyword planted
 in a config cannot terminate an audit.
 
+### Per-finding human review
+
+The reviewer decides on each FAIL: `approve_fix`, `reject_fix`, `accept_risk` (justification and
+expiry) or `false_positive` (reason). Undecided findings stay open. All decisions go through
+`approval.validate_review()`, the single source of rules shared by the terminal (`HumanApprover`)
+and the UI (`StructuredApprover`, one JSON form). It runs on the server, so the browser is never
+trusted. `runner.apply_review()` then records the decisions in the checkpoint and audit log, adds
+accepted risks to `waivers.yaml`, and writes the report plus a script containing **only approved
+fixes**. The History tab can review an audit after the fact, using the same function.
+
+**Effective status.** The rule engine's verdict never changes. Review and waivers produce an
+*effective* status (`scoring.assess`): a false positive counts as passing; an accepted risk still
+counts against the compliance score (it is non-compliant) but is no longer open. Score = weighted
+share of passing applicable controls (critical 10, high 5, medium 3, low 1). Rating = severity of
+the worst open finding, or *Compliant*.
+
+**Waivers in later audits.** Active waivers are loaded at the start of every audit. The
+RemediationEngineer skips waived findings (saving tokens), the completeness check doesn't require
+a fix for them, and they reopen automatically when they expire.
+
 ### Why the human gate runs after the team
 
 Inside the round-robin, `TextMentionTermination` would end the run the moment the Critic approves,

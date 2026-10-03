@@ -10,10 +10,12 @@ from typing import Any
 
 from autogen_core.models import ChatCompletionClient
 
-from configguard.approval import HumanApprover
+from configguard.approval import HumanApprover, ReviewOutcome
 from configguard.config.settings import Settings
 from configguard.context import AuditContext
-from configguard.persistence import load_checkpoint, save_checkpoint
+from configguard.facts import device_facts
+from configguard.models import Waiver
+from configguard.persistence import load_checkpoint, save_checkpoint, update_context
 from configguard.reporting import (
     DeviceResult,
     device_name,
@@ -25,6 +27,7 @@ from configguard.reporting import (
 )
 from configguard.team import build_team, run_audit
 from configguard.telemetry import AuditLog
+from configguard.waivers import WaiverStore
 
 
 @dataclass
@@ -53,6 +56,7 @@ async def audit_config(
     else:
         assert config_path is not None
         ctx = AuditContext(config_path=config_path, baseline_path=settings.baseline_path)
+    ctx.waivers = WaiverStore(settings.waivers_path).load()  # agents skip findings under active waivers
 
     log = AuditLog(settings.logs_dir / f"{ctx.audit_id}.jsonl")
     log.event("audit_start", audit_id=ctx.audit_id, config=ctx.config_path.name,
@@ -76,6 +80,8 @@ async def audit_config(
         raise
 
     status = "approved" if outcome.approved else "not_approved"
+    if ctx.loaded:
+        ctx.facts = device_facts(ctx.raw_lines)
     save_checkpoint(settings.state_dir, ctx, await team.save_state(), status)
     cost = outcome.usage.cost_usd(settings.price_input_per_mtok, settings.price_output_per_mtok)
     log.event("audit_end", status=status, device=device_name(ctx), stop_reason=outcome.stop_reason, gaps=outcome.gaps,
@@ -106,6 +112,10 @@ def _dedupe_devices(results: list[DeviceResult]) -> None:
         seen.add(r.device)
 
 
+def existing_reports(settings: Settings, results: list[DeviceResult]) -> list[str]:
+    return [r.device for r in results if (settings.reports_dir / f"{r.device}.md").exists()]
+
+
 async def finalize(
     settings: Settings, summary: RunSummary, approver: HumanApprover, *, export_allowed: bool
 ) -> None:
@@ -114,31 +124,58 @@ async def finalize(
     if not results:
         return
     _dedupe_devices(results)
+    store = WaiverStore(settings.waivers_path)
+    for r in results:
+        r.ctx.waivers = store.load()
+    outcome = await approver.review(results, existing_reports(settings, results), export_allowed=export_allowed,
+                                    max_waiver_days=settings.max_waiver_days)
+    apply_review(settings, summary, outcome, transcript=approver.transcript)
+
+
+def apply_review(
+    settings: Settings, summary: RunSummary, outcome: ReviewOutcome, *, transcript: list[tuple[str, str]] | None = None
+) -> None:
+    """Record decisions, update the risk register, then write reports and approved-only scripts."""
+    results = summary.results
     generated = now()
     stamp = generated.strftime("%Y%m%d-%H%M%S")
     reports, scripts = settings.reports_dir, settings.remediation_dir
     reports.mkdir(parents=True, exist_ok=True)
+    store = WaiverStore(settings.waivers_path)
 
-    existing = [r.device for r in results if (reports / f"{r.device}.md").exists()]
-    decision = await approver.review(results, existing, export_allowed=export_allowed)
+    new_waivers = []
     for r in results:
+        decisions = outcome.decisions.get(r.ctx.audit_id, {})
+        r.ctx.decisions.update(decisions)
+        for d in decisions.values():
+            if d.action == "accept_risk" and d.expires:
+                new_waivers.append(Waiver(device=r.ctx.hostname, rule_id=d.rule_id, justification=d.comment,
+                                          approver=d.reviewer, ticket=d.ticket, expires=d.expires,
+                                          created=generated.date(), audit_id=r.ctx.audit_id))
+    store.add(new_waivers)
+    all_waivers = store.load()
+    for r in results:
+        r.ctx.waivers = all_waivers
         AuditLog(settings.logs_dir / f"{r.ctx.audit_id}.jsonl").event(
-            "human_review", transcript=approver.transcript,
-            export=r.device in decision.export, overwrite=decision.overwrite,
+            "human_review", reviewer=outcome.reviewer, ticket=outcome.ticket, overwrite=outcome.overwrite,
+            decisions=[d.model_dump(mode="json") for d in outcome.decisions.get(r.ctx.audit_id, {}).values()],
+            transcript=transcript or [],
         )
+        update_context(settings.state_dir, r.ctx)
 
     for r in results:
         outputs: dict[str, str] = {}
         md = reports / f"{r.device}.md"
-        if md.exists() and not decision.overwrite:
+        if md.exists() and not outcome.overwrite:
             md = reports / f"{r.device}-{r.ctx.audit_id}.md"  # keep the old report, write alongside
         md.write_text(render_markdown(r, generated), encoding="utf-8")
         summary.written.append(md)
         outputs["report"] = str(md)
-        if r.device in decision.export:
+        approved = [rid for rid, d in r.ctx.decisions.items() if d.action == "approve_fix" and rid in r.ctx.remediations]
+        if approved:  # only fixes a human approved are ever exported
             scripts.mkdir(parents=True, exist_ok=True)
-            txt = scripts / f"{r.device}_{r.ctx.audit_id}_remediation.txt"  # unique: never overwrites
-            txt.write_text(render_remediation_script(r, generated), encoding="utf-8")
+            txt = scripts / f"{r.device}_{r.ctx.audit_id}_remediation.txt"  # unique per audit
+            txt.write_text(render_remediation_script(r, generated, approved), encoding="utf-8")
             summary.written.append(txt)
             outputs["remediation"] = str(txt)
         AuditLog(settings.logs_dir / f"{r.ctx.audit_id}.jsonl").event("outputs", **outputs)

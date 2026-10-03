@@ -10,6 +10,9 @@
 #   python             named function in src/configguard/tools/rule_checks.py
 # Patterns are Python regexes, matched case-insensitively against whitespace-stripped lines.
 # applies_when.global_present: if no top-level line matches, the rule is NOT_APPLICABLE.
+#
+# frameworks: public control IDs only (no copyrighted control text). This is a BEST-EFFORT
+# mapping written for ConfigGuard; have your compliance team verify it before relying on it.
 
 schema_version: 1
 platform: cisco_ios
@@ -18,12 +21,19 @@ settings:
   external_interface_pattern: '(?i)\b(wan|internet|isp|external|uplink-ext)\b'
   max_exec_timeout_minutes: 15
   default_snmp_communities: [public, private]
+  references:
+    - title: Cisco Guide to Harden Cisco IOS Devices
+      url: https://www.cisco.com/c/en/us/support/docs/ip/access-lists/13608-21.html
 
 rules:
   - id: CG-001
     title: Remote terminal access limited to SSH
     severity: critical
     category: management-plane
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AC-17(2)", "SC-8"]
+      PCI DSS v4.0: ["2.2.7"]
+      ISO/IEC 27001:2022: ["A.8.20", "A.8.24"]
     description: >-
       Every VTY line must explicitly accept SSH only. Telnet sends usernames, passwords and
       session contents across the network in cleartext.
@@ -39,6 +49,10 @@ rules:
     title: SSH protocol version 2 enforced
     severity: high
     category: management-plane
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["SC-8(1)", "SC-13"]
+      PCI DSS v4.0: ["2.2.7"]
+      ISO/IEC 27001:2022: ["A.8.24"]
     description: >-
       The SSH server must be pinned to version 2. Version 1 has known cryptographic weaknesses
       that allow session hijacking and credential recovery.
@@ -51,6 +65,10 @@ rules:
     title: Password encryption service enabled
     severity: medium
     category: credentials
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["IA-5(1)"]
+      PCI DSS v4.0: ["8.3.2"]
+      ISO/IEC 27001:2022: ["A.5.17"]
     description: >-
       service password-encryption must be on so that passwords stored in the configuration are
       not readable by anyone who sees a copy of it.
@@ -65,6 +83,10 @@ rules:
     title: Privileged mode protected by enable secret
     severity: high
     category: credentials
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["IA-5(1)", "AC-6"]
+      PCI DSS v4.0: ["8.3.2"]
+      ISO/IEC 27001:2022: ["A.5.17", "A.8.2"]
     description: >-
       Privileged EXEC access must use 'enable secret' (a one-way hash) and the legacy
       'enable password' (weak or no encryption) must not be present.
@@ -78,6 +100,10 @@ rules:
     title: AAA enabled with a login authentication method
     severity: high
     category: access-control
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["IA-2", "AC-2"]
+      PCI DSS v4.0: ["8.2.1", "8.3.1"]
+      ISO/IEC 27001:2022: ["A.5.15", "A.8.5"]
     description: >-
       'aaa new-model' must be enabled together with at least one 'aaa authentication login'
       method list, so every login is authenticated through a defined, auditable method.
@@ -91,6 +117,10 @@ rules:
     title: No default SNMP community strings
     severity: critical
     category: management-plane
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["IA-5", "CM-6"]
+      PCI DSS v4.0: ["2.2.2"]
+      ISO/IEC 27001:2022: ["A.8.9", "A.5.17"]
     description: >-
       SNMP must not use well-known community strings such as 'public' or 'private', which
       attackers try first and which can expose (or, read-write, change) the configuration.
@@ -108,6 +138,10 @@ rules:
     title: Cleartext HTTP management disabled
     severity: high
     category: management-plane
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["CM-7", "SC-8"]
+      PCI DSS v4.0: ["2.2.4", "2.2.7"]
+      ISO/IEC 27001:2022: ["A.8.20", "A.8.21"]
     description: >-
       The HTTP server must be disabled. If web management is needed, only the HTTPS server
       ('ip http secure-server') may be used.
@@ -120,6 +154,10 @@ rules:
     title: Login banner configured
     severity: low
     category: legal
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AC-8"]
+      PCI DSS v4.0: []
+      ISO/IEC 27001:2022: []
     description: >-
       A login or MOTD banner must warn that access is restricted and monitored. It supports
       legal action against unauthorized users.
@@ -132,6 +170,10 @@ rules:
     title: Remote syslog with informational logging
     severity: medium
     category: monitoring
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AU-4(1)", "AU-9(2)"]
+      PCI DSS v4.0: ["10.2.1", "10.3.3"]
+      ISO/IEC 27001:2022: ["A.8.15"]
     description: >-
       Logs must be sent to at least one remote syslog host at 'informational' (level 6) or a
       more verbose level, so security events survive a reboot or a compromise of the device.
@@ -146,6 +188,10 @@ rules:
     title: Authenticated NTP
     severity: medium
     category: monitoring
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AU-8", "SC-45(1)"]
+      PCI DSS v4.0: ["10.6.1", "10.6.3"]
+      ISO/IEC 27001:2022: ["A.8.17"]
     description: >-
       NTP must be configured with authentication: an authentication key, a trusted key,
       'ntp authenticate', and at least one server that uses the key. Accurate, trusted time is
@@ -167,6 +213,10 @@ rules:
     title: VTY access restricted by ACL
     severity: high
     category: access-control
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AC-17", "AC-3"]
+      PCI DSS v4.0: []
+      ISO/IEC 27001:2022: ["A.8.20", "A.5.15"]
     description: >-
       Every VTY line must apply an inbound access-class so only approved management hosts can
       open remote sessions.
@@ -187,6 +237,10 @@ rules:
     title: Idle session timeout on console and VTY
     severity: medium
     category: access-control
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["AC-12", "AC-11"]
+      PCI DSS v4.0: ["8.2.8"]
+      ISO/IEC 27001:2022: ["A.8.5"]
     description: >-
       Console and VTY lines must have an exec-timeout that is not disabled ('0 0') and not
       longer than the baseline maximum, so unattended sessions are closed.
@@ -199,6 +253,10 @@ rules:
     title: CDP disabled on external-facing interfaces
     severity: medium
     category: information-disclosure
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["CM-7", "SC-7"]
+      PCI DSS v4.0: ["2.2.4"]
+      ISO/IEC 27001:2022: ["A.8.20"]
     description: >-
       CDP must be off on interfaces facing untrusted networks (identified by their description).
       CDP announces the platform, software version and addresses to anything connected.
@@ -211,6 +269,10 @@ rules:
     title: Unused interfaces shut down
     severity: low
     category: physical
+    frameworks:
+      NIST SP 800-53 Rev. 5: ["CM-7"]
+      PCI DSS v4.0: []
+      ISO/IEC 27001:2022: ["A.8.20"]
     description: >-
       Interfaces with no IP address, no description and no switchport configuration are
       considered unused and must be administratively shut down to block unauthorized access.

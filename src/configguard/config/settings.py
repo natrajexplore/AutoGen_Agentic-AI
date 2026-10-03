@@ -35,6 +35,9 @@ class Settings:
     logs_dir: Path
     state_dir: Path
     configs_dir: Path  # configs offered in the web UI (default: the test fixtures)
+    waivers_path: Path  # risk-acceptance register
+    max_waiver_days: int  # longest allowed risk acceptance
+    reviewer_name: str  # default reviewer for CLI review (REVIEWER_NAME); asked for if empty
     uploads_dir: Path  # configs uploaded through the web UI
 
     @classmethod
@@ -57,5 +60,8 @@ class Settings:
             logs_dir=_path("LOGS_DIR", PROJECT_ROOT / "logs"),
             state_dir=_path("STATE_DIR", PROJECT_ROOT / "state"),
             configs_dir=_path("CONFIGS_DIR", PROJECT_ROOT / "tests" / "fixtures"),
+            waivers_path=_path("WAIVERS_PATH", PROJECT_ROOT / "waivers.yaml"),
+            max_waiver_days=int(os.getenv("MAX_WAIVER_DAYS", "365")),
+            reviewer_name=os.getenv("REVIEWER_NAME", "").strip()[:80],
             uploads_dir=_path("UPLOADS_DIR", PROJECT_ROOT / "uploads"),
         )

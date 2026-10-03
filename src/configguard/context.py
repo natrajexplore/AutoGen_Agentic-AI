@@ -14,7 +14,7 @@ from typing import Any
 
 from ciscoconfparse2 import CiscoConfParse
 
-from configguard.models import Baseline, Finding, Remediation
+from configguard.models import Baseline, Finding, Remediation, ReviewDecision, Waiver
 
 
 def sha256_text(text: str) -> str:
@@ -35,6 +35,9 @@ class AuditContext:
     baseline: Baseline | None = None
     findings: dict[str, Finding] = field(default_factory=dict)
     remediations: dict[str, Remediation] = field(default_factory=dict)
+    decisions: dict[str, ReviewDecision] = field(default_factory=dict)  # human review, per rule
+    facts: dict[str, Any] | None = None  # device facts (version, platform, counts)
+    waivers: list[Waiver] = field(default_factory=list, repr=False)  # all known waivers; reloaded, never saved here
 
     def __post_init__(self) -> None:
         self.config_path = Path(self.config_path).resolve()
@@ -43,6 +46,14 @@ class AuditContext:
     @property
     def loaded(self) -> bool:
         return bool(self.raw_lines)
+
+    @property
+    def hostname(self) -> str:
+        """Device hostname from the parsed inventory or facts, falling back to the file stem."""
+        for source in (self.inventory, self.facts):
+            if source and source.get("hostname"):
+                return str(source["hostname"])
+        return self.config_path.stem
 
     def to_dict(self) -> dict[str, Any]:
         """Serialisable snapshot for pause/resume. Excludes raw and masked config text."""
@@ -53,6 +64,8 @@ class AuditContext:
             "config_sha256": self.config_sha256,
             "findings": {k: v.model_dump() for k, v in self.findings.items()},
             "remediations": {k: v.model_dump() for k, v in self.remediations.items()},
+            "decisions": {k: v.model_dump(mode="json") for k, v in self.decisions.items()},
+            "facts": self.facts,
         }
 
     @classmethod
@@ -65,4 +78,6 @@ class AuditContext:
         ctx.config_sha256 = data.get("config_sha256")
         ctx.findings = {k: Finding(**v) for k, v in data.get("findings", {}).items()}
         ctx.remediations = {k: Remediation(**v) for k, v in data.get("remediations", {}).items()}
+        ctx.decisions = {k: ReviewDecision(**v) for k, v in data.get("decisions", {}).items()}
+        ctx.facts = data.get("facts")
         return ctx
