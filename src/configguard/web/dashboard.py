@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Fleet dashboard: posture across the latest audit of every device, plus trends over time."""
 
 from __future__ import annotations

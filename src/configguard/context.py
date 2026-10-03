@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Per-audit working state shared by the tools.
 
 Raw config text lives only here, in memory. It is never returned by a tool and never

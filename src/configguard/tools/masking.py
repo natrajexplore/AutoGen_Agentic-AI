@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Secret masking. Every piece of config text that leaves a tool goes through mask_line.
 
 Masking keeps the command shape and encryption-type digits (e.g. `enable secret 9 <MASKED>`)

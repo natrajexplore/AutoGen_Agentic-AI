@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Tests for spend caps, input bounds and the token-saving tool views."""
 
 from __future__ import annotations

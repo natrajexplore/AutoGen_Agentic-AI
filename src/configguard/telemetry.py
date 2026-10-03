@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Traceability: JSONL log of every agent message and tool call, plus token and cost tracking.
 
 Everything logged has already passed through the masking tools, so logs contain no raw secrets.

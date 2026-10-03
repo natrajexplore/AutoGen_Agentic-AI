@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Human review, scoring, waivers (risk acceptance) and device facts. No LLM calls."""
 
 from __future__ import annotations

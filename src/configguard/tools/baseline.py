@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Baseline tools: load_baseline, check_rule, find_config_lines."""
 
 from __future__ import annotations

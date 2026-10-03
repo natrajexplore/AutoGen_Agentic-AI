@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Compliance score and risk rating, combining rule verdicts with human review and waivers.
 
 - The rule engine's verdict never changes. Review and waivers only change a finding's *effective*

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """get_audit_record tool: read-only view of what the tools actually recorded.
 
 Gives the Critic ground truth to review against, instead of other agents' chat claims.

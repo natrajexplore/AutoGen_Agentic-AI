@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """parse_ios_config tool: deterministic IOS/IOS-XE parsing with ciscoconfparse2.
 
 The inventory contains masked text only. Free-text fields (descriptions, banners) are

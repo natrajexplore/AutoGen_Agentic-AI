@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Device facts read from a running config: software version, platform, inventory counts.
 
 Facts are descriptive only (no secrets): they appear in report headers, the UI and the dashboard,

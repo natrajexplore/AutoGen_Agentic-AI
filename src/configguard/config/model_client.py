@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Model client factory: switch providers by changing MODEL_PROVIDER / MODEL in .env.
 
 API keys are read by each client from its standard environment variable

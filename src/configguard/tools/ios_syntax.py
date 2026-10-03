@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Remediation tools: validate_ios_syntax, lockout detection, record_remediation.
 
 validate_ios_syntax is a BEST-EFFORT keyword grammar, not a real IOS parser. It checks

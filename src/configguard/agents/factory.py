@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Build the four AssistantAgents, binding each tool to one AuditContext.
 
 Tools in configguard.tools take the AuditContext as their first argument; here they are wrapped

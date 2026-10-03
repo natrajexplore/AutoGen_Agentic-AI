@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Web UI backend tests. The agent team is replaced by a deterministic fake, so no API calls."""
 
 from __future__ import annotations

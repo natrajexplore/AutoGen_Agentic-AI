@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Generate the synthetic IOS-XE test configs and expected_results.json.
 
 Ground truth comes from the violations seeded here, NOT from running ConfigGuard, so the

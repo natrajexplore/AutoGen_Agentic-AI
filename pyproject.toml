@@ -3,8 +3,10 @@ name = "configguard"
 version = "0.1.0"
 description = "ConfigGuard: multi-agent network config compliance auditing with AutoGen"
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [
-    { email = "natrajexplore@gmail.com" }
+    { name = "Nataraj Angappan", email = "natrajexplore@gmail.com" }
 ]
 requires-python = ">=3.11"
 dependencies = [

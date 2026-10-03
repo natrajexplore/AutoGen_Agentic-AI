@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Nataraj Angappan
 // ConfigGuard UI. All config- and agent-derived text is inserted with textContent (via el()),
 // never innerHTML: config descriptions/banners are untrusted and may carry injection payloads.
 "use strict";
@@ -201,6 +203,11 @@ async function loadInfo() {
     el("span", { class: "chip" }, `${INFO.provider} · ${INFO.model}`),
     el("span", { class: "chip" }, INFO.baseline));
   $("#key-warning").classList.toggle("hidden", INFO.api_key_configured);
+  // GPL-3.0 "Appropriate Legal Notices": copyright, no warranty, and how to view the license
+  $("#legal").replaceChildren(
+    `ConfigGuard ${INFO.version} · ${INFO.copyright} · Free software licensed under ${INFO.license}, with NO WARRANTY · `,
+    el("a", { href: "/api/legal/license", target: "_blank", rel: "noopener" }, "View license"), " · ",
+    el("a", { href: "/api/legal/third-party", target: "_blank", rel: "noopener" }, "Third-party notices"));
 }
 
 // --------------------------------------------------------------------------- dashboard

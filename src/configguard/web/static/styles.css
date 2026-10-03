@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 Nataraj Angappan */
 :root {
   --bg: #f4f6fa;
   --panel: #ffffff;
@@ -311,6 +313,8 @@ table.facts td:first-child { color: var(--muted); width: 38%; }
 .files { margin: 6px 0 0; padding-left: 18px; }
 .files li { word-break: break-all; }
 
+.legal { text-align: center; color: var(--muted); font-size: 12px; padding: 18px 20px 28px; border-top: 1px solid var(--border); margin-top: 8px; }
+.legal a { color: var(--muted); }
 .toast { position: fixed; bottom: 18px; right: 18px; background: var(--text); color: var(--panel); padding: 10px 14px; border-radius: 8px; max-width: 420px; z-index: 20; }
 
 @media (max-width: 1000px) {

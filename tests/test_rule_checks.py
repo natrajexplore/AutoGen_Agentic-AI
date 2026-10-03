@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Edge cases of the deterministic rule engine, using inline config snippets."""
 
 from __future__ import annotations

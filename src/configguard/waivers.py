@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Risk-acceptance register (waivers.yaml): accepted risks carry over to future audits until expiry.
 
 Waivers never hide a violation. Future audits still detect it; it is shown as RISK_ACCEPTED

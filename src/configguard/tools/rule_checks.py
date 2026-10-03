@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Deterministic rule evaluation. This module, not the LLM, decides PASS/FAIL/NOT_APPLICABLE.
 
 Matching runs on raw config lines (so e.g. default SNMP communities can be recognised),

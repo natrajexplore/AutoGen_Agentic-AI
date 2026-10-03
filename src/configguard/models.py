@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Pydantic data models shared by tools, agents and reporting.
 
 These models are framework-agnostic: nothing here imports AutoGen.

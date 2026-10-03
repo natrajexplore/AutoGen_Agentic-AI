@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Accuracy against tests/fixtures/expected_results.json (success criteria 1 and 2).
 
 The deterministic tier needs no LLM. The `llm` tier (Phase 3) runs the full agent team.

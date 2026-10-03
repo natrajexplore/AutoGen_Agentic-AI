@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Runtime settings, read from environment / .env. No secrets are stored on this object."""
 
 from __future__ import annotations

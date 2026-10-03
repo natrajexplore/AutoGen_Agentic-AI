@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """HumanApprover: the final review gate, run after the agent team finishes.
 
 The reviewer decides on EACH failed control, as in a real audit sign-off:

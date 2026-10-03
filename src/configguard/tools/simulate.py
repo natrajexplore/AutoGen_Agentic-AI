@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Apply remediation commands to an in-memory copy of a config, approximating IOS semantics.
 
 Used to verify that a remediation actually resolves its finding: the rule is re-evaluated on the

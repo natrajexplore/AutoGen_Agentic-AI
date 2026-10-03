@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Pause/resume: checkpoint the AuditContext record plus AutoGen team state to state/<audit_id>.json.
 
 Raw config text is never written. On resume the config is re-read from disk and must match the

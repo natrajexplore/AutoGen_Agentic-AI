@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Reports are rendered from the AuditContext record (tool output), never from agent chat text.
 
 The Markdown report follows the structure of a professional audit deliverable: cover, executive

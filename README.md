@@ -9,8 +9,9 @@ Built with [Microsoft AutoGen](https://github.com/microsoft/autogen) AgentChat �
 ![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![AutoGen](https://img.shields.io/badge/AutoGen%20AgentChat-0.7.5-5C2D91)
 ![FastAPI](https://img.shields.io/badge/FastAPI-web%20UI-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-266%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-323%20passing-2ea44f)
 ![Accuracy](https://img.shields.io/badge/accuracy-140%2F140%20verdicts-2ea44f)
+[![License: GPL v3+](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
 </div>
 
@@ -46,6 +47,7 @@ auditors, and drafts IOS remediation for engineers to review.
 - [Troubleshooting](#troubleshooting)
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
+- [License](#license)
 
 ## What's new
 
@@ -545,7 +547,7 @@ The baseline is validated when it is loaded. Two conventions you may need to ada
 ## Testing
 
 ```bash
-uv run pytest                    # 266 offline tests, no API calls (about 8 s)
+uv run pytest                    # 323 offline tests, no API calls (about 8 s)
 uv run pytest -m llm -s          # live run on all 10 fixtures (about 4 min, about $0.47 with gpt-4o)
 uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures and expected_results.json
 ```
@@ -554,6 +556,8 @@ uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures and ex
   fixture generator, not from ConfigGuard output.
 - **Coverage.** The fixtures include a fully compliant config (r01), one with all 14 violations (r02),
   NOT_APPLICABLE cases (r08) and a prompt-injection bait config (r09).
+- **Licensing is tested too.** The LICENSE text must match the canonical GPL-3.0, every source file
+  must carry its SPDX header, and every pinned dependency must appear in the third-party notices.
 - **What's tested.** Every tool, the rule engine's edge cases, masking (including leak tests), the
   remediation patcher, reports, per-finding review validation, scoring, waivers, device facts,
   checkpoints, the web backend and dashboard (with a fake agent run) and the spend safeguards.
@@ -563,6 +567,8 @@ uv run python tests/fixtures/generate_fixtures.py   # regenerate fixtures and ex
 ```
 AutoGen_Agentic-AI/
 ├── main.py                       # entry point (same as `configguard`)
+├── LICENSE                       # GNU GPL v3 (project licensed GPL-3.0-or-later)
+├── THIRD_PARTY_NOTICES.md        # dependency licenses and referenced standards
 ├── baselines/cisco_ios_v1.yaml   # the 14 baseline rules
 ├── docs/
 │   ├── ARCHITECTURE.md           # design, Mermaid flow, schema, security model
@@ -671,12 +677,37 @@ new audit for the updated config.
 - Concurrent batch audits with a rate-limit budget.
 - Optional lab verification of remediation (pyATS / Batfish).
 
+## License
+
+Copyright (C) 2026 Nataraj Angappan
+
+ConfigGuard is free software: you can redistribute it and/or modify it under the terms of the
+**GNU General Public License** as published by the Free Software Foundation, either **version 3** of
+the License, or (at your option) any later version.
+
+ConfigGuard is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details. The full text is in [LICENSE](LICENSE).
+
+| | |
+|---|---|
+| **Why GPL** | ConfigGuard imports `ciscoconfparse2`, which is licensed GPL-3.0-only. Licensing ConfigGuard GPL-3.0-or-later keeps the combined work distributable under GPL-3.0. |
+| **Third-party software** | All 58 runtime dependencies, their licenses and project links are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Apart from ciscoconfparse2 they are permissive (MIT, BSD, ISC, Apache-2.0, PSF) or MPL-2.0, all GPL-3.0-compatible. Dependencies are installed from PyPI, not vendored. |
+| **Per-file notices** | Every source file starts with `SPDX-License-Identifier: GPL-3.0-or-later` and the copyright line. |
+| **In-product notices** | `configguard --version` prints the copyright and no-warranty notice, and the web UI footer links to the license and third-party notices (`/api/legal/license`, `/api/legal/third-party`). |
+| **Standards referenced** | NIST, PCI DSS and ISO/IEC 27001 are referenced by control ID only, the Cisco hardening guide is linked, and the CIS benchmark is not reproduced. See the notices file. |
+
+> This section summarises the licensing; it is not legal advice. If you plan to redistribute
+> ConfigGuard commercially or bundle it with proprietary software, check with your legal team.
+
 ---
 
 <div align="center">
 
 **ConfigGuard drafts. Humans decide. Devices stay untouched.**
 
-[Architecture](docs/ARCHITECTURE.md) · [Project brief](docs/SPEC.md) · [Report an issue](https://github.com/natrajexplore/AutoGen_Agentic-AI/issues)
+Licensed under [GPL-3.0-or-later](LICENSE) · © 2026 Nataraj Angappan
+
+[Architecture](docs/ARCHITECTURE.md) · [Project brief](docs/SPEC.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Report an issue](https://github.com/natrajexplore/AutoGen_Agentic-AI/issues)
 
 </div>

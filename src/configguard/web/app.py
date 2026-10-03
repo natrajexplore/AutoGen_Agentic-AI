@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """ConfigGuard web UI backend: REST for configs/baseline/history, WebSocket for live audits.
 
 Local-only by design: run with `configguard ui` (binds 127.0.0.1). Host and Origin checks block
@@ -19,7 +21,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from configguard import runner
+from configguard import COPYRIGHT, LICENSE_ID, LICENSE_URL, __version__, runner
 from configguard.approval import StructuredApprover, validate_review
 from configguard.config.model_client import build_model_client
 from configguard.config.settings import Settings
@@ -62,6 +64,23 @@ def result_summary(r: DeviceResult) -> dict[str, Any]:
         "facts": ctx.facts,
         "assessment": r.assessment.to_dict(),
     }
+
+
+def legal_text(filename: str) -> str | None:
+    """Read LICENSE / THIRD_PARTY_NOTICES.md from the source tree or the installed package metadata."""
+    if filename not in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
+        return None
+    source = Path(__file__).resolve().parents[3] / filename
+    if source.is_file():
+        return source.read_text(encoding="utf-8")
+    try:
+        import importlib.metadata as md
+
+        files = md.distribution("configguard").files or []
+        match = next((f for f in files if f.name == filename), None)
+        return match.read_text(encoding="utf-8") if match else None
+    except md.PackageNotFoundError:
+        return None
 
 
 def item_record(item: Any) -> dict[str, Any]:
@@ -145,9 +164,21 @@ def create_app(settings: Settings | None = None, allowed_hosts: list[str] | None
             "baseline": settings.baseline_path.name,
             "api_key_configured": bool(os.getenv(key_var)) if key_var else True,
             "busy": run_lock.locked(),
+            "version": __version__,
+            "copyright": COPYRIGHT,
+            "license": LICENSE_ID,
+            "license_url": LICENSE_URL,
             "max_waiver_days": settings.max_waiver_days,
             "reviewer_name": settings.reviewer_name,
         }
+
+    @app.get("/api/legal/{doc}", response_class=PlainTextResponse)
+    def legal(doc: str) -> str:
+        """The GPL-3.0 license text and third-party notices (GPL "Appropriate Legal Notices")."""
+        text = legal_text({"license": "LICENSE", "third-party": "THIRD_PARTY_NOTICES.md"}.get(doc, ""))
+        if text is None:
+            raise HTTPException(404, "document not found")
+        return text
 
     @app.get("/api/configs")
     def configs() -> list[dict[str, Any]]:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Audit orchestration used by the CLI: single, batch and resume, followed by human review and output."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Audit history for the UI, rebuilt from logs/<id>.jsonl and state/<id>.json.
 
 Nothing here re-runs agents. A finished audit is reconstructed as a DeviceResult from its

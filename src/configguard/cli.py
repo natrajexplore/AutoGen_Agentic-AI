@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """ConfigGuard command line.
 
   configguard audit  CONFIG        audit one config (streams the agent conversation)
@@ -16,6 +18,7 @@ import dataclasses
 import sys
 from pathlib import Path
 
+from configguard import LEGAL_NOTICE, LICENSE_ID, __version__
 from configguard.approval import HumanApprover
 from configguard.config.model_client import build_model_client
 from configguard.config.settings import Settings
@@ -23,7 +26,12 @@ from configguard.runner import RunSummary, audit_config, finalize, run_batch
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="configguard", description="Multi-agent Cisco IOS config compliance audit.")
+    parser = argparse.ArgumentParser(
+        prog="configguard",
+        description="Multi-agent Cisco IOS config compliance audit.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,  # keeps the --version notice line breaks
+    )
+    parser.add_argument("--version", action="version", version=LEGAL_NOTICE)
     parser.add_argument("--baseline", type=Path, help="baseline YAML (default: BASELINE_PATH or baselines/cisco_ios_v1.yaml)")
     parser.add_argument("--no-remediation-export", action="store_true", help="never write remediation scripts")
     parser.add_argument("--reviewer", default=None, help="reviewer name recorded with decisions (default: REVIEWER_NAME)")
@@ -55,7 +63,8 @@ def serve_ui(args: argparse.Namespace) -> None:
     settings = Settings.from_env()
     if args.baseline:
         settings = dataclasses.replace(settings, baseline_path=args.baseline.resolve())
-    print(f"ConfigGuard UI: http://127.0.0.1:{args.port}  (local only, Ctrl+C to stop)")
+    print(f"ConfigGuard {__version__} UI: http://127.0.0.1:{args.port}  (local only, Ctrl+C to stop)")
+    print(f"Free software under {LICENSE_ID}, with NO WARRANTY. See `configguard --version`.")
     # 127.0.0.1 only: the UI shows masked config data and spends API credits.
     uvicorn.run(create_app(settings), host="127.0.0.1", port=args.port, log_level="warning")
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Team orchestration: RoundRobinGroupChat over the fixed parse -> check -> remediate -> review pipeline."""
 
 from __future__ import annotations

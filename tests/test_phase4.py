@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nataraj Angappan
 """Offline tests for reporting, human approval, persistence and telemetry (no LLM calls)."""
 
 from __future__ import annotations
